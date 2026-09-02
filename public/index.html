@@ -127,7 +127,7 @@
   <div class="btns"><button id="bCast">重新抛投</button><button id="bHere" class="ghost">此处重抛</button><button id="bPause" class="ghost">暂停</button><button id="bFollow" class="on">跟随</button></div>
   <div class="btns"><button id="bFish" class="ghost on">鱼模拟</button><button id="bShowFish" class="ghost">显示鱼位</button></div>
   <div class="btns"><button id="bReset" class="ghost">镜头回正</button><button id="bArrows" class="ghost">流速粒子</button><button id="bSlow" class="ghost">慢放 ½</button><button id="bMarks" class="ghost">擦底痕</button></div>
-  <p class="note">完美演示：系统每帧读取末饵与所在层水速差、领先量、离底高度、拖底比例，自动增减 holding back，逼近"同速 + 略领先 + 偶尔触底"。手动拖滑块会退出演示。<br>鱼藏在大石后回水、迎石缓冲带、陡坎下方、深槽底、碎石缝和近底慢/上层快的 seam；沙底浅滩几乎没鱼。入水水花、浮漂从浅水头顶经过、铅拖底刮石都会惊鱼。<br>擦底痕颜色：橙红 = 铅，亮黄 = 钨头，亮绿 = 轻蝇。<br>流速定义（表层）：缓流 &lt;0.5 · 中流 0.5–1.0 · 急流 1.0–1.6 · 激流 &gt;1.6 m/s。<br>改动水深或线组会自动重新抛投。流速与压线可实时调。红点 = 正在触底；擦底痕留在河床上。</p>
+  <p class="note">完美演示：先按流速剖面算出"浮漂应以饵所在层（底上 12cm）水速走"的目标压线量（前馈），再用末饵的同速差、领先量、离底、拖底做小修正。若饵在漂前却长期离底，会提示"铅太轻"并给建议克数——那是线组问题，压线解决不了。手动拖滑块会退出演示。<br>鱼藏在大石后回水、迎石缓冲带、陡坎下方、深槽底、碎石缝和近底慢/上层快的 seam；沙底浅滩几乎没鱼。入水水花、浮漂从浅水头顶经过、铅拖底刮石都会惊鱼。<br>擦底痕颜色：橙红 = 铅，亮黄 = 钨头，亮绿 = 轻蝇。<br>流速定义（表层）：缓流 &lt;0.5 · 中流 0.5–1.0 · 急流 1.0–1.6 · 激流 &gt;1.6 m/s。<br>改动水深或线组会自动重新抛投。流速与压线可实时调。红点 = 正在触底；擦底痕留在河床上。</p>
 </div>
 
 
@@ -432,30 +432,34 @@ function fishUpdate(dt){
   lastQ=best;
 }
 /* ===== 完美演示：自动调 holding back ===== */
-let AUTO=false,autoHb=0.45;const AS={sp:0,lead:0,off:0,frac:0,init:false};
+let AUTO=false,autoHb=0.45;const AS={sp:0,lead:0,off:0,frac:0,init:false,msg:'',light:0};
 function autoTune(dt){
   if(!AUTO||(phase!=='drift'&&phase!=='sink'))return;
   const baits=nodes.filter(n=>n.type==='bait');if(!baits.length)return;const b=baits[baits.length-1];
   const w=waterVel(b.p.x,b.p.y,b.p.z,simT);const off=b.p.y-bed(b.p.x,b.p.z)-b.r;const lead=b.p.x-F.p.x;
   const h=baitHist.get(b)||[];const frac=h.length?h.reduce((a,c)=>a+c,0)/h.length:0;
-  // 线组比此处水深短：到不了底，任何压线都无解 → 锁中等压线并提示
-  const need=-bed(b.p.x,b.p.z)+0.05;AS.short=rigLen()<need;
-  if(AS.short){autoHb+=(0.42-autoHb)*Math.min(1,dt*0.5);P.hb=autoHb;$('hb').value=Math.round(P.hb*100);$('vHb').textContent=Math.round(P.hb*100)+'% 线组短于水深';return;}
-  // 低通滤波（约 1.5 s），抑制湍流噪声
+  const us=Math.max(0.05,waterVel(F.p.x,-0.01,0,simT).x);
+  const bz=bed(b.p.x,b.p.z);AS.msg='';
+  // 1) 线组比水深短 → 无解，锁中等压线
+  if(rigLen()<-bz+0.05){autoHb+=(0.42-autoHb)*Math.min(1,dt*0.5);AS.msg='线组短于水深';P.hb=autoHb;$('hb').value=Math.round(P.hb*100);$('vHb').textContent=Math.round(P.hb*100)+'% · '+AS.msg;return;}
+  // 2) 前馈：dead drift = 浮漂以"饵应在层"的水速走。目标层 = 底上 12 cm（白甲/清波取食层）
+  const lvl=Math.max(0.05,Math.min(0.2,off));const wTarget=waterVel(b.p.x,bz+lvl,b.p.z,simT).x*0.97;   // 饵实际所在层（限 5–20cm），略慢 3% 让饵领先
+  const hbFF=Math.max(0,Math.min(0.85,1-wTarget/us));
+  // 3) 低通滤波的反馈修正（小增益）
   const k=Math.min(1,dt/1.5);if(!AS.init){AS.sp=b.v.x-w.x;AS.lead=lead;AS.off=off;AS.frac=frac;AS.init=true;}
   AS.sp+=((b.v.x-w.x)-AS.sp)*k;AS.lead+=(lead-AS.lead)*k;AS.off+=(off-AS.off)*k;AS.frac+=(frac-AS.frac)*k;
-  let d=0;
-  const inBand=AS.off<=0.28&&AS.lead>-0.15&&AS.lead<0.6&&Math.abs(AS.sp)<0.12&&AS.frac<0.45;
-  if(!inBand){
-    d+=0.12*Math.max(-0.4,Math.min(0.4,AS.sp));                 // 饵比水快 → 多压；比水慢 → 少压
-    d+=0.05*Math.max(-0.3,Math.min(0.3,0.15-AS.lead));          // 饵落后 → 多压
-    if(AS.off>0.28){const e=Math.min(0.5,AS.off-0.28);if(AS.lead>0.05)d-=0.2*e;else d+=0.2*e;} // 在漂前高=被提起→少压；在漂后高=被拖飞→多压
-    if(AS.frac>0.45)d+=0.08*(AS.frac-0.45);                     // 死拖底 → 略多压
-  }
-  if(phase==='sink')d-=0.03;
-  d=Math.max(-0.03,Math.min(0.03,d));                           // 每秒最多 ±3%
-  autoHb=Math.max(0,Math.min(0.9,autoHb+d*dt));
-  P.hb=autoHb;$('hb').value=Math.round(P.hb*100);$('vHb').textContent=Math.round(P.hb*100)+'%';
+  let corr=0;
+  corr+=0.10*Math.max(-0.5,Math.min(0.5,AS.sp));                  // 饵仍比水快 → 略多压
+  corr+=0.08*Math.max(-0.5,Math.min(0.5,0.15-AS.lead));           // 饵落后 → 多压
+  if(AS.off>0.3&&AS.lead>0.1)corr-=0.15*Math.min(0.6,AS.off-0.3);  // 饵在漂前被提起 → 少压
+  if(AS.frac>0.45)corr+=0.05*(AS.frac-0.45);                      // 死拖底 → 略多压
+  corr=Math.max(-0.12,Math.min(0.12,corr));
+  const target=Math.max(0,Math.min(0.85,hbFF+corr));
+  // 4) 铅是否够：饵在漂前却长期离底 >30cm → 铅太轻，无法靠压线解决
+  if(AS.off>0.3&&AS.lead>0.1&&phase==='drift'&&simT>10)AS.light=Math.min(8,AS.light+dt);else AS.light=Math.max(0,AS.light-dt*0.5);
+  if(AS.light>5){const tot=RIG.shots.reduce((s,x)=>s+x.w,0);const sug=Math.ceil(tot*(1+Math.min(1.0,AS.off*1.2)));AS.msg=`铅太轻（${tot}g），此流速建议 ≥${sug}g`;}
+  autoHb+=(target-autoHb)*Math.min(1,dt*0.35);  // 平滑逼近目标（时间常数约 3 s）
+  P.hb=autoHb;$('hb').value=Math.round(P.hb*100);$('vHb').textContent=Math.round(P.hb*100)+'%'+(AS.msg?' · '+AS.msg:'');
 }
 let bitePending=null;
 function doBite(rec){biteInfo=rec;phase='bite';paused=true;setPhase();rec.snap=nodes.chain.filter(n=>n.type!=='floattop').map(n=>({type:n.type,bt:n.bt,w:n.w,x:n.p.x,y:n.p.y,off:n.p.y-bed(n.p.x,n.p.z)-n.r,vx:n.v.x,ws:n.p.y<0?waterVel(n.p.x,n.p.y,n.p.z,simT).x:0,contact:n.contact}));rec.hb=P.hb;rec.tilt=floatTilt();rec.floatOut=Math.max(0,FT.p.y);bitePending=rec;}
@@ -824,7 +828,7 @@ function drawSchem(){
   s+=`<rect x="6" y="396" width="218" height="18" rx="4" fill="rgba(0,0,0,.35)"/><text x="115" y="409" font-size="11" fill="#fff" text-anchor="middle" font-weight="600">线组总长 ${Math.round(rigLen()*100)} cm（浮漂 → 末饵）</text>`;
   $('schem').innerHTML=s;}
 $('cap').addEventListener('input',updateSummary);
-$('bAuto').onclick=()=>{AUTO=!AUTO;$('bAuto').classList.toggle('on',AUTO);$('hb').disabled=AUTO;if(AUTO){autoHb=P.hb;AS.init=false;}};
+$('bAuto').onclick=()=>{AUTO=!AUTO;$('bAuto').classList.toggle('on',AUTO);$('hb').disabled=AUTO;if(AUTO){autoHb=P.hb;AS.init=false;AS.light=0;}};
 $('bFish').onclick=()=>{FISH_ON=!FISH_ON;$('bFish').classList.toggle('on',FISH_ON);};
 $('bShowFish').onclick=()=>{SHOW_FISH=!SHOW_FISH;$('bShowFish').classList.toggle('on',SHOW_FISH);};
 $('biteClose').onclick=()=>{$('biteWrap').style.display='none';buildRig(F.p.x);};
