@@ -111,7 +111,7 @@
   <div class="s"><select id="bedType" style="width:100%;font:inherit;font-size:12px;padding:5px;border:1px solid var(--rule);border-radius:4px;background:#fff">
     <option value="mixed">混合分区（每 62 m 循环）</option><option value="rubble">密集碎石（全程）</option><option value="cobble">卵石（全程）</option><option value="boulder">卵石 + 大石（全程）</option><option value="gravel">砾石（全程）</option><option value="sand">沙底（全程）</option><option value="bedrock">基岩板（全程）</option></select></div>
   <h2>河流</h2>
-  <div class="s"><label>基准水深 <span style="color:var(--ink2)">（DIY 后 = 漂→末饵）</span><b id="vDepth">1.50 m</b></label><input type="range" id="depth" min="0.8" max="3.2" step="0.01" value="1.5"></div>
+  <div class="s"><label>基准水深 <span style="color:var(--ink2)">（DIY 后 = 漂→最下铅）</span><b id="vDepth">1.50 m</b></label><input type="range" id="depth" min="0.8" max="3.2" step="0.01" value="1.5"></div>
   <div class="s"><label>表层流速 <span id="vRegime" style="color:var(--water)">中流</span><b id="vFlow">1.0 m/s</b></label><input type="range" id="flow" min="0.3" max="2.5" step="0.05" value="1.0"></div>
   <h2>holding back</h2>
   <div class="btns" style="margin-top:0"><button id="bAuto" class="ghost">完美演示：自动调 holding back</button></div>
@@ -127,7 +127,7 @@
   <div class="btns"><button id="bCast">重新抛投</button><button id="bHere" class="ghost">此处重抛</button><button id="bPause" class="ghost">暂停</button><button id="bFollow" class="on">跟随</button></div>
   <div class="btns"><button id="bFish" class="ghost on">鱼模拟</button><button id="bShowFish" class="ghost">显示鱼位</button></div>
   <div class="btns"><button id="bReset" class="ghost">镜头回正</button><button id="bArrows" class="ghost">流速粒子</button><button id="bSlow" class="ghost">慢放 ½</button><button id="bMarks" class="ghost">擦底痕</button></div>
-  <p class="note">完美演示：先按流速剖面算出"浮漂应以饵所在层（底上 12cm）水速走"的目标压线量（前馈），再用末饵的同速差、领先量、离底、拖底做小修正。若饵在漂前却长期离底，会提示"铅太轻"并给建议克数——那是线组问题，压线解决不了。手动拖滑块会退出演示。<br>鱼藏在大石后回水、迎石缓冲带、陡坎下方、深槽底、碎石缝和近底慢/上层快的 seam；沙底浅滩几乎没鱼。入水水花、浮漂从浅水头顶经过、铅拖底刮石都会惊鱼。<br>擦底痕颜色：橙红 = 铅，亮黄 = 钨头，亮绿 = 轻蝇。<br>流速定义（表层）：缓流 &lt;0.5 · 中流 0.5–1.0 · 急流 1.0–1.6 · 激流 &gt;1.6 m/s。<br>改动水深或线组会自动重新抛投。流速与压线可实时调。红点 = 正在触底；擦底痕留在河床上。</p>
+  
 </div>
 
 
@@ -163,7 +163,7 @@
       <h3 style="font-size:12px;margin:12px 0 6px">转环下挂饵（每个饵距上一个的距离）</h3>
       <div id="baitRows"></div>
       <div class="btns" style="margin-top:4px"><button id="addBait" class="ghost">+ 加一个饵</button></div>
-      <p class="note">改动即时生效并重新抛投；水深会自动设为"浮漂到最后一个饵"的长度（可再手动调）。铅可以放在转环上方任意位置，饵至少 1 个、最多 3 个；无铅方案时靠钨头自重下沉。</p>
+      
     </div>
   </div>
  </div>
@@ -436,33 +436,30 @@ function fishUpdate(dt){
   lastQ=best;
 }
 /* ===== 完美演示：自动调 holding back ===== */
-let AUTO=false,autoHb=0.45;const AS={sp:0,lead:0,off:0,frac:0,init:false,msg:'',light:0};
+let AUTO=false,autoHb=0.45;const AS={sp:0,lead:0,off:0,frac:0,init:false,msg:'',mode:'down',downT:0,cycles:0};
 function autoTune(dt){
   if(!AUTO||(phase!=='drift'&&phase!=='sink'))return;
   const baits=nodes.filter(n=>n.type==='bait');if(!baits.length)return;const b=baits[baits.length-1];
   const w=waterVel(b.p.x,b.p.y,b.p.z,simT);const off=b.p.y-bed(b.p.x,b.p.z)-b.r;const lead=b.p.x-F.p.x;
   const h=baitHist.get(b)||[];const frac=h.length?h.reduce((a,c)=>a+c,0)/h.length:0;
-  const us=Math.max(0.05,waterVel(F.p.x,-0.01,0,simT).x);
-  const bz=bed(b.p.x,b.p.z);AS.msg='';
-  // 1) 线组比水深短 → 无解，锁中等压线
+  const us=Math.max(0.05,waterVel(F.p.x,-0.01,0,simT).x);const bz=bed(b.p.x,b.p.z);AS.msg='';
   if(rigLen()<-bz+0.05){autoHb+=(0.42-autoHb)*Math.min(1,dt*0.5);AS.msg='线组短于水深';P.hb=autoHb;$('hb').value=Math.round(P.hb*100);$('vHb').textContent=Math.round(P.hb*100)+'% · '+AS.msg;return;}
-  // 2) 前馈：dead drift = 浮漂以"饵应在层"的水速走。目标层 = 底上 12 cm（白甲/清波取食层）
-  const lvl=Math.max(0.05,Math.min(0.2,off));const wTarget=waterVel(b.p.x,bz+lvl,b.p.z,simT).x*0.97;   // 饵实际所在层（限 5–20cm），略慢 3% 让饵领先
-  const hbFF=Math.max(0,Math.min(0.85,1-wTarget/us));
-  // 3) 低通滤波的反馈修正（小增益）
-  const k=Math.min(1,dt/1.5);if(!AS.init){AS.sp=b.v.x-w.x;AS.lead=lead;AS.off=off;AS.frac=frac;AS.init=true;}
+  const k=Math.min(1,dt/1.2);if(!AS.init){AS.sp=b.v.x-w.x;AS.lead=lead;AS.off=off;AS.frac=frac;AS.init=true;AS.mode='down';AS.downT=0;AS.cycles=0;}
   AS.sp+=((b.v.x-w.x)-AS.sp)*k;AS.lead+=(lead-AS.lead)*k;AS.off+=(off-AS.off)*k;AS.frac+=(frac-AS.frac)*k;
-  let corr=0;
-  corr+=0.10*Math.max(-0.5,Math.min(0.5,AS.sp));                  // 饵仍比水快 → 略多压
-  corr+=0.08*Math.max(-0.5,Math.min(0.5,0.15-AS.lead));           // 饵落后 → 多压
-  if(AS.off>0.3&&AS.lead>0.1)corr-=0.15*Math.min(0.6,AS.off-0.3);  // 饵在漂前被提起 → 少压
-  if(AS.frac>0.45)corr+=0.05*(AS.frac-0.45);                      // 死拖底 → 略多压
-  corr=Math.max(-0.12,Math.min(0.12,corr));
-  const target=Math.max(0,Math.min(0.85,hbFF+corr));
-  // 4) 铅是否够：饵在漂前却长期离底 >30cm → 铅太轻，无法靠压线解决
-  if(AS.off>0.3&&AS.lead>0.1&&phase==='drift'&&simT>10)AS.light=Math.min(8,AS.light+dt);else AS.light=Math.max(0,AS.light-dt*0.5);
-  if(AS.light>5){const tot=RIG.shots.reduce((s,x)=>s+x.w,0);const sug=Math.ceil(tot*(1+Math.min(1.0,AS.off*1.2)));AS.msg=`铅太轻（${tot}g），此流速建议 ≥${sug}g`;}
-  autoHb+=(target-autoHb)*Math.min(1,dt*0.35);  // 平滑逼近目标（时间常数约 3 s）
+  let target;
+  if(AS.mode==='down'){
+    target=0.12;AS.downT+=dt;AS.msg='放线让饵到底';                 // 阶段一：先让饵沉到底层
+    if(AS.off<0.16||frac>0.1){AS.mode='hold';AS.downT=0;}
+  }else{
+    const lvl=Math.max(0.05,Math.min(0.2,off));const wT=waterVel(b.p.x,bz+lvl,b.p.z,simT).x*0.97;   // 阶段二：浮漂按饵所在层水速走
+    let corr=0.10*Math.max(-0.5,Math.min(0.5,AS.sp))+0.08*Math.max(-0.5,Math.min(0.5,0.15-AS.lead));
+    if(AS.frac>0.45)corr+=0.05*(AS.frac-0.45);
+    if(AS.off>0.18&&AS.lead>0)corr-=0.6*(AS.off-0.18);            // 饵在漂前开始抬离 → 先减压
+    target=Math.max(0,Math.min(0.85,1-wT/us+Math.max(-0.2,Math.min(0.12,corr))));AS.msg='压线跟随底层水速';
+    if(AS.off>0.3&&AS.lead>0.1){AS.mode='down';AS.downT=0;AS.cycles++;}   // 饵在漂前被提起 → 回到放线
+  }
+  if(AS.cycles>=2||(AS.mode==='down'&&AS.downT>12)){const tot=RIG.shots.reduce((s,x)=>s+x.w,0);const sug=Math.ceil(tot*(1+Math.min(1.0,Math.max(0.3,AS.off)*1.2)));AS.msg=`铅太轻（${tot}g），建议 ≥${sug}g`;}
+  autoHb+=(target-autoHb)*Math.min(1,dt*(AS.mode==='down'?0.6:0.35));
   P.hb=autoHb;$('hb').value=Math.round(P.hb*100);$('vHb').textContent=Math.round(P.hb*100)+'%'+(AS.msg?' · '+AS.msg:'');
 }
 let bitePending=null;
@@ -727,7 +724,7 @@ function updateGauge(){
   const lead=M.p.x-F.p.x,kl=$('kLead');kl.textContent=(lead>=0?'领先 ':'落后 ')+Math.abs(lead).toFixed(2)+' m';kl.className=lead>=0?'lead-pos':'lead-neg';
   const ang=floatTilt();$('kTilt').textContent=(ang<0?'指上游 ':'指下游 ')+Math.abs(ang).toFixed(0)+'°';
   $('kPay').textContent=payRate.toFixed(2)+' m/s';
-  const zn=zoneAt(M.p.x);$('kSub').textContent=`${['沙','砾石','卵石','大石','基岩'][zn.t]} / ${muName(zn.mu)} ${zn.mu}`;$('zName').textContent=zn.name;
+  const zn=zoneAt(M.p.x);$('kSub').textContent=`${['沙','砾石','卵石','大石','基岩','碎石'][zn.t]} / ${muName(zn.mu)} ${zn.mu}`;$('zName').textContent=zn.name;
   if(Math.floor(simT*4)!==Math.floor((simT-1/60)*4))drawProfile(F.p.x);
   const qb=$('qbox');if(FISH_ON&&lastQ){qb.style.display='';$('qTot').textContent=(lastQ.q*100).toFixed(0)+(lastQ.ref?'  · 参照白甲':'  · '+SPECIES[lastQ.f.sp].name+' '+lastQ.d.toFixed(2)+'m');
     $('qSub').innerHTML=Object.entries(lastQ.sub).map(([k,v])=>`<span style="color:${v>0.8?'#2b7a3e':v>0.4?'#9a6a12':'#b23a2f'}">${k} ${(v*100).toFixed(0)}</span>`).join('');}else qb.style.display='none';
@@ -795,9 +792,10 @@ $('mClose').onclick=()=>mw.style.display='none';
 mw.addEventListener('click',e=>{if(e.target===mw)mw.style.display='none';});
 document.querySelectorAll('.preset').forEach(b=>b.onclick=()=>{const p=JSON.parse(JSON.stringify(PRESETS[b.dataset.p]));RIG.shots=p.shots;RIG.swD=p.swD;RIG.baits=p.baits;renderModal();autoDepth();buildRig();});
 function totalShots(){return RIG.shots.reduce((s,x)=>s+x.w,0);}
-function autoDepth(){const L=Math.round(rigLen()*100)/100;const d=Math.min(3.2,Math.max(0.8,L));if(Math.abs(d-P.depth)>0.001){P.depth=d;$('depth').value=d;$('vDepth').textContent=fmt.depth(d);buildBed();}}
+function anchorDepth(){const s=RIG.shots.filter(x=>x.d<RIG.swD-0.02);return s.length?Math.max(...s.map(x=>x.d)):RIG.swD;}
+function autoDepth(){const L=Math.round(anchorDepth()*100)/100;const d=Math.min(3.2,Math.max(0.8,L));if(Math.abs(d-P.depth)>0.001){P.depth=d;$('depth').value=d;$('vDepth').textContent=fmt.depth(d);buildBed();}}
 function updateSummary(){const sh=RIG.shots.length?RIG.shots.map(s=>s.w+'g@'+Math.round(s.d*100)+'cm').join(' · '):'无铅';const bt=RIG.baits.map(b=>BAIT_DEF[b.t].name+(b.t==='tung'?' '+b.w+'g':'')+' ↓'+Math.round(b.d*100)+'cm').join(' · ');
-  $('rigSummary').innerHTML=`线组总长 ${Math.round(rigLen()*100)} cm，水深已自适应<br>铅：${sh}（共 ${totalShots().toFixed(1)} g / 承重 ${P.cap} g）<br>转环 @${Math.round(RIG.swD*100)}cm → ${bt}`;}
+  $('rigSummary').innerHTML=`线组总长 ${Math.round(rigLen()*100)} cm；水深 = 漂→最下铅 ${Math.round(anchorDepth()*100)} cm，子线超深 ${Math.round((rigLen()-anchorDepth())*100)} cm<br>铅：${sh}（共 ${totalShots().toFixed(1)} g / 承重 ${P.cap} g）<br>转环 @${Math.round(RIG.swD*100)}cm → ${bt}`;}
 function renderModal(){
   const sr=$('shotRows');sr.innerHTML='<div class="rrow hd"><span>铅</span><span>克数 g</span><span>距漂 cm</span><span></span></div>';
   RIG.shots.forEach((s,i)=>{const r=document.createElement('div');r.className='rrow';
@@ -832,7 +830,7 @@ function drawSchem(){
   s+=`<rect x="6" y="396" width="218" height="18" rx="4" fill="rgba(0,0,0,.35)"/><text x="115" y="409" font-size="11" fill="#fff" text-anchor="middle" font-weight="600">线组总长 ${Math.round(rigLen()*100)} cm（浮漂 → 末饵）</text>`;
   $('schem').innerHTML=s;}
 $('cap').addEventListener('input',updateSummary);
-$('bAuto').onclick=()=>{AUTO=!AUTO;$('bAuto').classList.toggle('on',AUTO);$('hb').disabled=AUTO;if(AUTO){autoHb=P.hb;AS.init=false;AS.light=0;}};
+$('bAuto').onclick=()=>{AUTO=!AUTO;$('bAuto').classList.toggle('on',AUTO);$('hb').disabled=AUTO;if(AUTO){autoHb=P.hb;AS.init=false;}};
 $('bFish').onclick=()=>{FISH_ON=!FISH_ON;$('bFish').classList.toggle('on',FISH_ON);};
 $('bShowFish').onclick=()=>{SHOW_FISH=!SHOW_FISH;$('bShowFish').classList.toggle('on',SHOW_FISH);};
 $('biteClose').onclick=()=>{$('biteWrap').style.display='none';buildRig(F.p.x);};
