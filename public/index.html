@@ -124,7 +124,7 @@
     <div class="btns" style="margin-top:4px"><button class="ghost castopt on" data-c="baitUp">饵在上游<br><small>落水前压轮拉直</small></button><button class="ghost castopt" data-c="floatUp">饵在下游<br><small>不压轮，漂先落</small></button><button class="ghost castopt" data-c="heap">一堆落水<br><small>未展开</small></button></div>
   </div>
   <div class="s"><label>元件视觉放大<b id="vScale">2.5×</b></label><input type="range" id="vscale" min="1" max="4" step="0.5" value="2.5"></div>
-  <div class="s"><label>浮漂承重<b id="vCap">7 g</b></label><input type="range" id="cap" min="2" max="14" step="0.5" value="7"></div>
+  <div class="s"><label>浮漂承重 <span style="color:var(--ink2)">（DIY 后 = 线组重 + 1.5g）</span><b id="vCap">7 g</b></label><input type="range" id="cap" min="2" max="14" step="0.5" value="7"></div>
   <p class="note" id="rigSummary" style="margin-top:4px"></p>
   <div class="btns"><button id="bDiy">线组 DIY：布铅与挂饵</button></div>
   <div class="btns"><button id="bCast">重新抛投</button><button id="bHere" class="ghost">此处重抛</button><button id="bPause" class="ghost">暂停</button><button id="bFollow" class="on">跟随</button></div>
@@ -340,6 +340,7 @@ function step(dt){
      const kn=0.5*1000*1.1*(2*r)*ds,kt=0.5*1000*0.03*(2*Math.PI*r)*ds;
      const dfx=-kn*vn*vn_x-kt*Math.abs(vt)*vt*ax,dfy=-kn*vn*vn_y-kt*Math.abs(vt)*vt*ay;
      fx+=dfx;fy+=dfy;tq+=rx*dfy-ry*dfx;}
+   {const lim=0.55;const a=Math.abs(BODY.th);if(a>lim&&BODY.y<0.05)tq-=Math.sign(BODY.th)*(a-lim)*(a-lim)*0.03;}
    BODY.vx+=fx/BODY.m*dt;BODY.vy+=fy/BODY.m*dt;BODY.w+=tq/BODY.I*dt;BODY.w*=Math.exp(-dt*(BODY.y<0.1?14:0.5));
    if(BODY.y>0.3){const c=0.02*dt/BODY.m;BODY.vx/=(1+c*Math.abs(BODY.vx));}
    BODY.px=BODY.x;BODY.py=BODY.y;BODY.pth=BODY.th;BODY.x+=BODY.vx*dt;BODY.y+=BODY.vy*dt;BODY.th+=BODY.w*dt;syncFloatNodes();}
@@ -374,7 +375,10 @@ function step(dt){
         if(dd<rr){const s=rr/Math.max(dd,1e-4);n.pen+=rr-dd;n.p.x=R.x+cx*s;n.p.y=R.y+cy*s;n.contact=true;n.onRock=true;n.mu=0.7;const nl=Math.hypot(cx,cy)||1e-6;n.cnx=cx/nl;n.cny=cy/nl;}}
     }
   }
-  BODY.vx=(BODY.x-BODY.px)/dt;BODY.vy=(BODY.y-BODY.py)/dt;BODY.w=(BODY.th-BODY.pth)/dt;syncFloatNodes();F.v.set(BODY.vx,BODY.vy,0);FT.v.set(BODY.vx,BODY.vy,0);
+  BODY.vx=(BODY.x-BODY.px)/dt;BODY.vy=(BODY.y-BODY.py)/dt;BODY.w=(BODY.th-BODY.pth)/dt;
+  {const anchored=nodes.some(n=>n.contact&&(n.type==='shot'||n.type==='bait'));const taut=rodTip.distanceTo(FT.p)>lineOut-0.03;
+   if(!anchored&&!taut&&BODY.y<0.05){const kk=Math.min(1,dt*25);BODY.th-=BODY.th*kk;BODY.w*=(1-kk);const lim=0.1;if(Math.abs(BODY.th)>lim){BODY.th=Math.sign(BODY.th)*lim;BODY.w=0;}syncFloatNodes();}}   // 无触底：悬空线组挂在漂正下方，倾角 ≤6°
+  syncFloatNodes();F.v.set(BODY.vx,BODY.vy,0);FT.v.set(BODY.vx,BODY.vy,0);
   for(const n of nodes){if(n.body)continue;n.v.x=(n.p.x-n.pp.x)/dt;n.v.y=(n.p.y-n.pp.y)/dt;
     if(n.contact){ // 非弹性碰撞：去掉法向分离速度的 90%（铅/饵撞砾石几乎不反弹）
       const vdn=n.v.x*n.cnx+n.v.y*n.cny; if(vdn>0){n.v.x-=vdn*n.cnx*0.9;n.v.y-=vdn*n.cny*0.9;}
@@ -760,7 +764,7 @@ function updateTip(dt){const out=Math.max(-0.02,FT.p.y);tipH.push(out);while(tip
 function updateGauge(){
   const b=bed(F.p.x,0),h=-b;$('gDepth').textContent=`此处水深 ${h.toFixed(2)} m`;
   mk($('mkF'),F,b,h);if(O){$('mkO').style.display='';mk($('mkO'),O,b,h);}else $('mkO').style.display='none';mk($('mkJ'),J,b,h);mk($('mkM'),M,b,h);
-  $('rF').textContent=F.p.y>0.02?'空中':(FT.p.y<-0.01?'被压沉':'露出 '+(Math.max(0,FT.p.y)*100).toFixed(0)+'cm');
+  $('rF').textContent=F.p.y>0.02?'空中':(FT.p.y<-0.01?'⚠ 被拖沉 '+(-FT.p.y*100).toFixed(0)+'cm（承重不足）':'露出 '+(Math.max(0,FT.p.y)*100).toFixed(0)+'cm');
   const off=n=>Math.max(0,n.p.y-bed(n.p.x,n.p.z)-n.r);
   $('rO').textContent=O?off(O).toFixed(2)+' m':'无铅';$('rJ').textContent=off(J).toFixed(2)+' m';$('rM').textContent=off(M).toFixed(2)+' m';
   $('rMv').textContent=waterVel(M.p.x,M.p.y,M.p.z,simT).x.toFixed(2)+' m/s';$('rMs').textContent=Math.abs(M.v.x).toFixed(2)+' m/s';
@@ -838,7 +842,8 @@ mw.addEventListener('click',e=>{if(e.target===mw)mw.style.display='none';});
 document.querySelectorAll('.preset').forEach(b=>b.onclick=()=>{const p=JSON.parse(JSON.stringify(PRESETS[b.dataset.p]));RIG.shots=p.shots;RIG.swD=p.swD;RIG.baits=p.baits;renderModal();autoDepth();buildRig();});
 function totalShots(){return RIG.shots.reduce((s,x)=>s+x.w,0);}
 function anchorDepth(){const s=RIG.shots.filter(x=>x.d<RIG.swD-0.02);return s.length?Math.max(...s.map(x=>x.d)):RIG.swD;}
-function autoDepth(){const L=Math.round(anchorDepth()*100)/100;const d=Math.min(3.2,Math.max(0.8,L));if(Math.abs(d-P.depth)>0.001){P.depth=d;$('depth').value=d;$('vDepth').textContent=fmt.depth(d);buildBed();}}
+function autoCap(){const load=RIG.shots.reduce((s,x)=>s+x.w,0)+RIG.baits.reduce((s,b)=>s+(b.t==='tung'?b.w+0.12:b.t==='grass'?0.3:0.1),0);const c=Math.round((load+1.5)*2)/2;P.cap=Math.max(2,Math.min(14,c));$('cap').value=P.cap;$('vCap').textContent=P.cap+' g';}
+function autoDepth(){autoCap();const L=Math.round(anchorDepth()*100)/100;const d=Math.min(3.2,Math.max(0.8,L));if(Math.abs(d-P.depth)>0.001){P.depth=d;$('depth').value=d;$('vDepth').textContent=fmt.depth(d);buildBed();}}
 function updateSummary(){const sh=RIG.shots.length?RIG.shots.map(s=>s.w+'g@'+Math.round(s.d*100)+'cm').join(' · '):'无铅';const bt=RIG.baits.map(b=>BAIT_DEF[b.t].name+(b.t==='tung'?' '+b.w+'g':'')+' ↓'+Math.round(b.d*100)+'cm').join(' · ');
   $('rigSummary').innerHTML=`线组总长 ${Math.round(rigLen()*100)} cm；水深 = 漂→最下铅 ${Math.round(anchorDepth()*100)} cm，子线超深 ${Math.round((rigLen()-anchorDepth())*100)} cm<br>铅：${sh}（共 ${totalShots().toFixed(1)} g / 承重 ${P.cap} g）<br>转环 @${Math.round(RIG.swD*100)}cm → ${bt}`;}
 function renderModal(){
