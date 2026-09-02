@@ -26,7 +26,7 @@
   .tube .bed{position:absolute;left:0;right:0;bottom:0;height:12px;background:#6e5d47;border-top:2px solid #8a7a62}
   .tube .surf{position:absolute;left:0;right:0;top:0;height:2px;background:#fff}
   .mk{position:absolute;left:4px;width:46px;height:2px;transition:top .08s linear}
-  .mk::after{content:attr(data-l);position:absolute;left:0;top:-13px;font-size:9.5px;font-weight:600;color:#fff;text-shadow:0 1px 2px rgba(0,0,0,.6)}
+  .mk::after{content:attr(data-l);position:absolute;left:0;top:-12px;font-size:9.5px;font-weight:600;color:#fff;text-shadow:0 1px 2px rgba(0,0,0,.6)}
   .mk.f{background:var(--float)}.mk.o{background:var(--lead)}.mk.j{background:var(--tung)}.mk.m{background:var(--moss)}
   .mk.c::before{content:"";position:absolute;right:-3px;top:-3px;width:8px;height:8px;border-radius:50%;background:#ff4a3d;box-shadow:0 0 6px #ff4a3d}
   .vprof{position:absolute;left:0;top:0;width:54px;height:280px;pointer-events:none;opacity:.6}
@@ -78,22 +78,16 @@
       <div class="tube">
         <div class="surf"></div>
         <svg class="vprof" id="vprof" viewBox="0 0 54 280" preserveAspectRatio="none"></svg>
-        <div class="mk f" id="mkF" data-l="漂"></div><div class="mk o" id="mkO" data-l="铅"></div>
-        <div class="mk j" id="mkJ" data-l="钨"></div><div class="mk m" id="mkM" data-l="蝇"></div>
+        <div class="mk f" id="mkF" data-l="漂"></div><div id="mkDyn"></div>
         <div class="bed"></div>
       </div>
-      <div class="rows">
+      <div class="rows" id="rowsDyn" style="justify-content:flex-start;gap:3px">
         <div class="row"><i style="background:var(--float)"></i><span>浮漂</span><b id="rF">—</b></div>
-        <div class="row"><i style="background:var(--lead)"></i><span>主铅 离底</span><b id="rO">—</b></div>
-        <div class="row"><i style="background:var(--tung)"></i><span>钨头 离底</span><b id="rJ">—</b></div>
-        <div class="row"><i style="background:var(--moss)"></i><span>轻蝇 离底</span><b id="rM">—</b></div>
-        <div class="row"><i style="background:#cbd5db"></i><span>蝇层水速</span><b id="rMv">—</b></div>
-        <div class="row"><i style="background:#cbd5db"></i><span>蝇实际速度</span><b id="rMs">—</b></div>
       </div>
     </div>
     <div style="margin-top:8px;font-size:11px;color:var(--ink2);display:flex;justify-content:space-between"><span>漂尖露出（最近 6 s）</span><b id="tipNow" style="color:var(--ink)">—</b></div>
     <svg id="tipHist" viewBox="0 0 220 34" style="width:100%;height:34px;background:#dfe6e8;border-radius:3px;display:block"></svg>
-    <div class="fr"><span id="fO">铅 · 无接触</span><span id="fJ">钨 · 无接触</span><span id="fM">蝇 · 无接触</span></div>
+    <div class="fr" id="frDyn"></div>
     <div class="kpi" id="qbox" style="display:none">
       <div><span>呈现评分</span><b id="qTot">—</b></div>
       <div id="qSub" style="display:grid;grid-template-columns:repeat(4,1fr);gap:3px 6px;font-size:10px;color:var(--ink2)"></div>
@@ -322,6 +316,7 @@ function buildRig(atX){
   nodes.forEach(n=>{n.pp.copy(n.p);n.contact=false;});
   lineOut=rodTip.distanceTo(FT.p)+0.4;simT=0;phase='air';snagT=0;trail.length=0;marks.length=0;baitHist=new Map();prevBaitV=new Map();lastQ=null;AS.init=false;FISH.forEach(f=>f.p=0);paused=false;setPhase();
   if(typeof rebuildVisuals==='function')rebuildVisuals();
+  if(typeof buildGauge==='function')buildGauge();
   if(typeof updateSummary==='function')updateSummary();
 }
 function floatTilt(){return -BODY.th*180/Math.PI;}
@@ -417,7 +412,7 @@ function lieScore(x,z){  // 位置越像鱼窝分越高
   if(zn.t===5||zn.t===2){s+=0.5;sp='baijia';}                           // 碎石缝/卵石
   if(zn.t===3&&sp!=='qingbo'){s+=0.3;sp='baijia';}
   if(BEDTYPE==='mixed'){const m=xm(x);if(m>22&&m<25){s+=0.7;sp='qingbo';}} // 陡坎下方
-  if(zn.t===0)s*=0.25;                                                   // 沙底少鱼
+  if(zn.t===0){s=s*0.5+0.24;sp=h<1.4?'makou':'qingbo';}                 // 沙底：鱼少但不为零，浅沙滩马口、深沙底零星清波
   if(zn.t===1&&h<1.2){s+=0.25;sp='makou';}                              // 砾石浅滩中上层马口
   if(h>1.6&&sp==='makou')sp='baijia';
   return {s,sp};
@@ -425,10 +420,13 @@ function lieScore(x,z){  // 位置越像鱼窝分越高
 function genFish(){FISH=[];let seed=101;const r=()=>{seed=(seed*16807)%2147483647;return (seed-1)/2147483646;};
   const cands=[];for(let x=-4;x<175;x+=0.5){for(let k=0;k<3;k++){const z=(r()-0.5)*0.6;const L=lieScore(x,z);if(L.s>0.35)cands.push({x,z,s:L.s,sp:L.sp,r:r()});}}
   cands.sort((a,b)=>b.s+b.r*0.4-(a.s+a.r*0.4));
-  for(const c of cands){if(FISH.length>=110)break;if(FISH.some(f=>Math.abs(f.x-c.x)<1.0))continue;
-    const S=SPECIES[c.sp];const b=bed(c.x,c.z);const hOff=S.bottom?0.06+r()*0.12:0.35+r()*0.4;
-    FISH.push({x:c.x,z:c.z,y:b+hOff,home:{x:c.x,y:b+hOff,z:c.z},sp:c.sp,size:S.size[0]+r()*(S.size[1]-S.size[0]),alert:0,feeding:r()<0.7,feedT:5+r()*15,dart:0,p:0,seed:r()*100});}
+  const place=c=>{const S=SPECIES[c.sp];const b=bed(c.x,c.z);const hOff=S.bottom?0.06+r()*0.12:0.35+r()*0.4;
+    FISH.push({x:c.x,z:c.z,y:b+hOff,home:{x:c.x,y:b+hOff,z:c.z},sp:c.sp,size:S.size[0]+r()*(S.size[1]-S.size[0]),alert:0,feeding:r()<0.7,feedT:5+r()*15,dart:0,p:0,seed:r()*100});};
+  for(const c of cands){if(FISH.length>=110)break;if(zoneAt(c.x).t===0)continue;if(FISH.some(f=>Math.abs(f.x-c.x)<1.0))continue;place(c);}
+  // 沙底补位：低密度（≥2.6 m 一条），保证不为零
+  for(const c of cands){if(zoneAt(c.x).t!==0)continue;if(FISH.some(f=>Math.abs(f.x-c.x)<2.6))continue;place(c);}
 }
+
 function fishNear(n,dist){return FISH.filter(f=>Math.abs(f.x-n.p.x)<dist&&Math.abs(f.z-n.p.z)<dist);}
 let baitHist=new Map();  // 每个饵最近1s触底记录
 let prevBaitV=new Map();
@@ -761,14 +759,29 @@ function updateTip(dt){const out=Math.max(-0.02,FT.p.y);tipH.push(out);while(tip
   const wl=30-(0.02/0.08)*28;
   $('tipHist').innerHTML=`<line x1="0" y1="${wl}" x2="220" y2="${wl}" stroke="#2A8CA0" stroke-width="1" stroke-dasharray="3 3"/><path d="${d}" fill="none" stroke="#F0632A" stroke-width="1.8"/>`+(simT-tipEvtT<1.2?`<text x="4" y="11" font-size="10" fill="#b23a2f" font-weight="600">${tipEvt}</text>`:'');
   $('tipNow').textContent=FT.p.y<-0.01?'沉没':(out*100).toFixed(1)+' cm';}
+let gaugeEls=[];
+function buildGauge(){
+  const rows=$('rowsDyn'),mk=$('mkDyn'),fr=$('frDyn');rows.innerHTML='<div class="row"><i style="background:var(--float)"></i><span>浮漂</span><b id="rF">—</b></div>';mk.innerHTML='';fr.innerHTML='';gaugeEls=[];
+  const cols={shot:'var(--lead)',swivel:'#cfd6d8',tung:'var(--tung)',bare:'#8a7a4a',moss:'var(--moss)',grass:'#5f9a4c'};
+  const shots=nodes.filter(n=>n.type==='shot'),baits=nodes.filter(n=>n.type==='bait');
+  const items=[...shots.map((n,i)=>({n,name:`铅${shots.length>1?i+1:''} ${n.w}g`,short:'铅'+(shots.length>1?i+1:''),col:cols.shot})),
+    ...nodes.filter(n=>n.type==='swivel').map(n=>({n,name:'转环',short:'环',col:cols.swivel})),
+    ...baits.map((n,i)=>({n,name:BAIT_DEF[n.bt].name+(n.bt==='tung'?' '+n.w+'g':''),short:n.bt==='tung'?'钨':n.bt==='moss'?'蝇':n.bt==='grass'?'草':'钩',col:cols[n.bt],bait:true}))];
+  items.forEach((it,i)=>{const r=document.createElement('div');r.className='row';r.innerHTML=`<i style="background:${it.col}"></i><span>${it.name} 离底</span><b>—</b>`;rows.appendChild(r);
+    const m=document.createElement('div');m.className='mk';m.style.background=it.col;m.dataset.l=it.short;mk.appendChild(m);
+    let f=null;if(it.n.type!=='swivel'){f=document.createElement('span');fr.appendChild(f);}
+    gaugeEls.push({it,val:r.querySelector('b'),mk:m,fr:f});});
+  const last=baits[baits.length-1];if(last){const r1=document.createElement('div');r1.className='row';r1.innerHTML=`<i style="background:#cbd5db"></i><span>末饵所在层水速</span><b id="rMv">—</b>`;rows.appendChild(r1);
+    const r2=document.createElement('div');r2.className='row';r2.innerHTML=`<i style="background:#cbd5db"></i><span>末饵实际速度</span><b id="rMs">—</b>`;rows.appendChild(r2);}
+}
 function updateGauge(){
   const b=bed(F.p.x,0),h=-b;$('gDepth').textContent=`此处水深 ${h.toFixed(2)} m`;
-  mk($('mkF'),F,b,h);if(O){$('mkO').style.display='';mk($('mkO'),O,b,h);}else $('mkO').style.display='none';mk($('mkJ'),J,b,h);mk($('mkM'),M,b,h);
+  mk($('mkF'),F,b,h);mk($('mkJ'),J,b,h);mk($('mkM'),M,b,h);
   $('rF').textContent=F.p.y>0.02?'空中':(FT.p.y<-0.01?'⚠ 被拖沉 '+(-FT.p.y*100).toFixed(0)+'cm（承重不足）':'露出 '+(Math.max(0,FT.p.y)*100).toFixed(0)+'cm');
   const off=n=>Math.max(0,n.p.y-bed(n.p.x,n.p.z)-n.r);
-  $('rO').textContent=O?off(O).toFixed(2)+' m':'无铅';$('rJ').textContent=off(J).toFixed(2)+' m';$('rM').textContent=off(M).toFixed(2)+' m';
+  for(const g of gaugeEls){const n=g.it.n;g.val.textContent=off(n).toFixed(2)+' m';mk(g.mk,n,b,h);if(g.fr){const nm=g.it.short;if(n.contact){g.fr.textContent=nm+(n.onRock?' · 蹭石':' · 擦底')+' μ'+n.mu.toFixed(2);g.fr.classList.add('on');}else{g.fr.textContent=nm+' · 无接触';g.fr.classList.remove('on');}}}
   $('rMv').textContent=waterVel(M.p.x,M.p.y,M.p.z,simT).x.toFixed(2)+' m/s';$('rMs').textContent=Math.abs(M.v.x).toFixed(2)+' m/s';
-  if(O)frText('fO',O,'铅');else{$('fO').textContent='无铅';$('fO').classList.remove('on');}frText('fJ',J,'钨');frText('fM',M,'蝇');
+
   const ws=waterVel(F.p.x,-0.01,0,simT).x;$('kSpeed').textContent=`${F.v.x.toFixed(2)} / ${ws.toFixed(2)} m/s`;
   const lead=M.p.x-F.p.x,kl=$('kLead');kl.textContent=(lead>=0?'领先 ':'落后 ')+Math.abs(lead).toFixed(2)+' m';kl.className=lead>=0?'lead-pos':'lead-neg';
   const ang=floatTilt();$('kTilt').textContent=(ang<0?'指上游 ':'指下游 ')+Math.abs(ang).toFixed(0)+'°'+(ang>6?' · 线组在拖':ang<-40?' · 压过头':'');
