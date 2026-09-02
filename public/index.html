@@ -327,6 +327,10 @@ function step(dt){
   for(let it=0;it<8;it++){
     for(const c of cons){const dx=c.b.p.x-c.a.p.x,dy=c.b.p.y-c.a.p.y;const d=Math.hypot(dx,dy)||1e-6;if(d<=c.d&&!c.rigid)continue;
       const wa=1/c.a.m,wb=1/c.b.m,co=(d-c.d)/d/(wa+wb);c.a.p.x+=dx*co*wa;c.a.p.y+=dy*co*wa;c.b.p.x-=dx*co*wb;c.b.p.y-=dy*co*wb;}
+    // 浮漂回正（水动力 + 浮力体在上）：把倾斜的漂向竖直方向软约束
+    {const cx=(FT.p.x+F.p.x)/2,cy=(FT.p.y+F.p.y)/2;const ax=FT.p.x-F.p.x,ay=FT.p.y-F.p.y;const L=Math.hypot(ax,ay)||1e-6;const ux=ax/L,uy=ay/L;
+     const kR=0.0005*(F.p.y<0.05?1:0);const nx=ux*(1-kR),ny=uy*(1-kR)+kR;const nl=Math.hypot(nx,ny);const vx=nx/nl*L/2,vy=ny/nl*L/2;
+     FT.p.x=cx+vx;FT.p.y=cy+vy;F.p.x=cx-vx;F.p.y=cy-vy;}
     const dx=FT.p.x-rodTip.x,dy=FT.p.y-rodTip.y,dz=FT.p.z-rodTip.z;const d=Math.sqrt(dx*dx+dy*dy+dz*dz);
     if(d>lineOut){const s=lineOut/d;FT.p.x=rodTip.x+dx*s;FT.p.y=rodTip.y+dy*s;}
     for(const n of nodes){
