@@ -273,12 +273,12 @@ const trail=[], marks=[];   // marks: 擦底痕 [x,y,z,type]
 
 /* 线组规格 */
 function rigLen(){return RIG.swD+RIG.baits.reduce((s,b)=>s+b.d,0);}
-const RIG={shots:[{d:1.0,w:4},{d:1.3,w:2}],swD:1.35,baits:[{t:'tung',w:0.4,d:0.2},{t:'moss',w:0,d:0.4}]};
+const RIG={shots:[{d:1.0,w:4},{d:1.3,w:2}],swD:1.35,baits:[{t:'tung',w:0.4,d:0.2},{t:'moss',w:0,d:0.2}]};
 const PRESETS={
-  single:{shots:[{d:1.3,w:6}],swD:1.35,baits:[{t:'tung',w:0.4,d:0.2},{t:'moss',w:0,d:0.4}]},
-  double:{shots:[{d:1.0,w:4},{d:1.3,w:2}],swD:1.35,baits:[{t:'tung',w:0.4,d:0.2},{t:'moss',w:0,d:0.4}]},
-  grad:{shots:[{d:0.45,w:2.5},{d:0.75,w:2},{d:1.0,w:1.2},{d:1.2,w:0.6}],swD:1.3,baits:[{t:'tung',w:0.3,d:0.2},{t:'moss',w:0,d:0.4}]},
-  none:{shots:[],swD:1.3,baits:[{t:'tung',w:0.6,d:0.15},{t:'moss',w:0,d:0.55}]},
+  single:{shots:[{d:1.3,w:6}],swD:1.35,baits:[{t:'tung',w:0.4,d:0.2},{t:'moss',w:0,d:0.2}]},
+  double:{shots:[{d:1.0,w:4},{d:1.3,w:2}],swD:1.35,baits:[{t:'tung',w:0.4,d:0.2},{t:'moss',w:0,d:0.2}]},
+  grad:{shots:[{d:0.45,w:2.5},{d:0.75,w:2},{d:1.0,w:1.2},{d:1.2,w:0.6}],swD:1.3,baits:[{t:'tung',w:0.3,d:0.2},{t:'moss',w:0,d:0.2}]},
+  none:{shots:[],swD:1.3,baits:[{t:'tung',w:0.6,d:0.2},{t:'moss',w:0,d:0.2}]},
 };
 const BAIT_DEF={
   tung:{name:'钨头 nymph',mk:w=>{const mb=Math.max(0.05,w)/1000,mh=1.2e-4;return new Node(mb+mh,0.004,0.08,(mb*(1-1/19)+mh*(1-1/7.8))/(mb+mh));}},
@@ -853,7 +853,7 @@ function renderModal(){
     const sel=r.querySelector('select'),[w,d]=r.querySelectorAll('input');sel.onchange=()=>{b.t=sel.value;if(b.t!=='tung')b.w=0;renderModal();autoDepth();buildRig();};w.oninput=()=>{b.w=+w.value||0;apply();};d.oninput=()=>{b.d=(+d.value||5)/100;apply();};
     r.querySelector('.x').onclick=()=>{if(RIG.baits.length>1){RIG.baits.splice(i,1);renderModal();autoDepth();buildRig();}};br.appendChild(r);});
   $('addShot').onclick=()=>{if(RIG.shots.length<6){RIG.shots.push({d:Math.min(RIG.swD-0.1,(RIG.shots.at(-1)?.d||0.4)+0.25),w:1});renderModal();autoDepth();buildRig();}};
-  $('addBait').onclick=()=>{if(RIG.baits.length<3){RIG.baits.push({t:'moss',w:0,d:0.3});renderModal();autoDepth();buildRig();}};
+  $('addBait').onclick=()=>{if(RIG.baits.length<3){RIG.baits.push({t:'moss',w:0,d:0.2});renderModal();autoDepth();buildRig();}};
   drawSchem();
 }
 let applyT=null;function apply(){drawSchem();clearTimeout(applyT);applyT=setTimeout(()=>{autoDepth();buildRig();},250);}
