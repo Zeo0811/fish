@@ -776,11 +776,11 @@ function buildGauge(){
 }
 function updateGauge(){
   const b=bed(F.p.x,0),h=-b;$('gDepth').textContent=`此处水深 ${h.toFixed(2)} m`;
-  mk($('mkF'),F,b,h);mk($('mkJ'),J,b,h);mk($('mkM'),M,b,h);
+  mk($('mkF'),F,b,h);
   $('rF').textContent=F.p.y>0.02?'空中':(FT.p.y<-0.01?'⚠ 被拖沉 '+(-FT.p.y*100).toFixed(0)+'cm（承重不足）':'露出 '+(Math.max(0,FT.p.y)*100).toFixed(0)+'cm');
   const off=n=>Math.max(0,n.p.y-bed(n.p.x,n.p.z)-n.r);
   for(const g of gaugeEls){const n=g.it.n;g.val.textContent=off(n).toFixed(2)+' m';mk(g.mk,n,b,h);if(g.fr){const nm=g.it.short;if(n.contact){g.fr.textContent=nm+(n.onRock?' · 蹭石':' · 擦底')+' μ'+n.mu.toFixed(2);g.fr.classList.add('on');}else{g.fr.textContent=nm+' · 无接触';g.fr.classList.remove('on');}}}
-  $('rMv').textContent=waterVel(M.p.x,M.p.y,M.p.z,simT).x.toFixed(2)+' m/s';$('rMs').textContent=Math.abs(M.v.x).toFixed(2)+' m/s';
+  if($('rMv')){$('rMv').textContent=waterVel(M.p.x,M.p.y,M.p.z,simT).x.toFixed(2)+' m/s';$('rMs').textContent=Math.abs(M.v.x).toFixed(2)+' m/s';}
 
   const ws=waterVel(F.p.x,-0.01,0,simT).x;$('kSpeed').textContent=`${F.v.x.toFixed(2)} / ${ws.toFixed(2)} m/s`;
   const lead=M.p.x-F.p.x,kl=$('kLead');kl.textContent=(lead>=0?'领先 ':'落后 ')+Math.abs(lead).toFixed(2)+' m';kl.className=lead>=0?'lead-pos':'lead-neg';
