@@ -293,7 +293,7 @@ function waterVel(x,y,z,t){
 const g=9.81;
 const MAT={lead:{muF:1.00,e:0.05,rho:11340},tung:{muF:0.42,e:0.12,rho:19300},steel:{muF:0.50,e:0.10,rho:7800},soft:{muF:0.72,e:0.04,rho:1100},line:{muF:0.58,e:0.06,rho:1150}};
 function radiusOf(m,rho){return Math.cbrt(3*m/(4*Math.PI*rho));}
-class Node{constructor(m,r,k,wf){this.m=m;this.r=r;this.k=k;this.wf=wf;this.mat=MAT.line;this.p=new THREE.Vector3();this.v=new THREE.Vector3();this.pp=new THREE.Vector3();this.contact=false;this.onRock=false;this.mu=0;this.pen=0;this.wedged=0;this.cnx=0;this.cny=1;this.iw=1/m;this.type='line';}}
+class Node{constructor(m,r,k,wf){this.m=m;this.r=r;this.k=k;this.wf=wf;this.mat=MAT.line;this.p=new THREE.Vector3();this.v=new THREE.Vector3();this.pp=new THREE.Vector3();this.contact=false;this.onRock=false;this.mu=0;this.pen=0;this.wedged=0;this.cnx=0;this.cny=1;this.iw=1/m;this.type='line';this.lastMarkT=-1e9;}}
 let nodes=[],cons=[],F,FT,O,J,M;
 /* 浮漂刚体（x-y 平面）：底端 s=0，顶端 s=L */
 const BODY={L:0.16,m:0.0045,I:0,cm:0.04,x:0,y:0,th:0,vx:0,vy:0,w:0,px:0,py:0,pth:0};
@@ -515,7 +515,7 @@ function shapeEuroLightTail(dt){
   if(phase==='air'||ERIG.topo!=='heavyTag'||!J||!M)return;
   // 重蝇 J 是沉降锚点；末端轻蝇 M 被底层流托在其后上方，不能反过来把重蝇排到上面。
   const minLightY=J.p.y+0.055,alpha=1-Math.exp(-6*dt);
-  if(M.p.y<minLightY){M.p.y+=(minLightY-M.p.y)*alpha;M.v.y=Math.max(M.v.y,0.08);}
+  if(M.p.y<minLightY){M.p.y=minLightY;M.v.y=Math.max(M.v.y,0.08);M.contact=false;M.onRock=false;M.pen=0;}
   const ch=nodes.chain,aI=ch.indexOf(J),bI=ch.indexOf(M);if(aI<0||bI<=aI+1)return;
   for(let i=aI+1;i<bI;i++){const n=ch[i];if(n.type!=='leader')continue;const t=(i-aI)/(bI-aI),arc=4*t*(1-t);
     const tx=J.p.x+(M.p.x-J.p.x)*t+0.003*arc,ty=J.p.y+(M.p.y-J.p.y)*t;
@@ -550,11 +550,17 @@ function stepEuro(dt){
     const stalled=M0.contact&&Math.abs(M0.v.x)<0.05;
     const mix=stalled?0.82:0.25;
     let target=Math.min(aheadTarget*(1-mix)+EURO.tipBase*mix, EURO.tipBase+span*0.95);
+    const slackGain=Math.max(0,Math.min(1,(0.985-EURO.tension)/0.12));
+    const normalLeadCap=Math.max(controlLead,Math.min(0.85,span*0.45));
+    const slackLeadCap=Math.max(normalLeadCap,Math.min(2.0,span*0.82));
+    const maxControlLead=normalLeadCap+(slackLeadCap-normalLeadCap)*slackGain;
+    target=Math.min(target,M0.p.x+maxControlLead);                    // 急流中也不能让独立推进基准把竿尖拉出线长几何范围
+    target=Math.max(target,M0.p.x+controlLead+(maxControlLead-controlLead)*slackGain); // 大松量时先水平收线，避免错误地抬高竿尖
     target=Math.max(target,M0.p.x+controlLead);
     if(landing)target=rodTip.x+(target-rodTip.x)*tighten;
     rodTip.x+=(target-rodTip.x)*Math.min(1,dt*2.2);
     // leader 绷死 → 竿尖回撤放松（保持微绷才有 dead drift 和读口能力）
-    if(!landing&&EURO.tension>0.94){const back=Math.min(2.2,(EURO.tension-0.94)*40);rodTip.x-=back*dt;EURO.tipBase-=back*0.8*dt;}
+    if(!landing&&EURO.tension>1.015){const back=Math.min(1.2,(EURO.tension-1.015)*24);rodTip.x-=back*dt;EURO.tipBase-=back*0.65*dt;}
     // 整体紧线控制：流越快允许的 belly 稍大；松量过多就向下游收线，过少则轻微回撤。
     const bellyTarget=0.035+Math.min(0.065,P.flow*0.035);
     const takeUp=Math.max(-0.35,Math.min(0.90,(EURO.slack-bellyTarget)*3.2));
@@ -598,15 +604,18 @@ function stepEuro(dt){
     // leader 靠长度约束与竿尖张力绷直。不给它额外“抗弯刚性”，避免末端线段把蝇持续压在河床上。
     for(const n of nodes){
       if(it===0){n.contact=false;n.onRock=false;n.pen=0;}   // 整帧只清一次：任一迭代碰到就算触底
-      const by=bed(n.p.x,n.p.z)+n.r+0.002;if(n.p.y<by){n.pen=Math.max(n.pen,by-n.p.y);n.p.y=by;n.contact=true;n.mu=zoneAt(n.p.x).mu*n.mat.muF;n.cnx=0;n.cny=1;}
-      for(const R of rocksNear(n.p.x,n.p.z)){const cx=n.p.x-R.x,cy=n.p.y-R.y,cz=n.p.z-R.z;const dd=Math.sqrt(cx*cx+cy*cy+cz*cz);
+      const skin=n.type==='bait'?0.0006:n.type==='leader'?0.0003:0.0015;
+      const by=bed(n.p.x,n.p.z)+n.r+skin;if(n.p.y<by){n.pen=Math.max(n.pen,by-n.p.y);n.p.y=by;n.contact=true;n.mu=zoneAt(n.p.x).mu*n.mat.muF;n.cnx=0;n.cny=1;}
+      for(const R of rocksNear(n.p.x,n.p.z)){if(n.type==='leader')continue; // 细 leader 会绕过石面，不能按与石头同半径的刚性球体卡住
+        const cx=n.p.x-R.x,cy=n.p.y-R.y,cz=n.p.z-R.z;const dd=Math.sqrt(cx*cx+cy*cy+cz*cz);
         // leader 绷紧时蝇能被拽过石缝：有效碰撞半径随张力收缩（真实里小蝇不会被一颗石头永久挡住）
-        const shrink=(n.type==='bait'&&EURO&&EURO.tension>0.90)?Math.min(0.75,(EURO.tension-0.90)*7):0;
+        const shrink=(n.type==='bait'&&EURO&&EURO.tension>0.96)?Math.min(0.75,(EURO.tension-0.96)*9):0;
         const hitScale=n.type==='bait'?0.84:1;                         // 蝇钩不按整颗钨珠的包围球去撞石头
         const rr=(R.r+n.r)*hitScale*(1-shrink);
         if(dd<rr){const s=rr/Math.max(dd,1e-4);n.pen=Math.max(n.pen,rr-dd);n.p.x=R.x+cx*s;n.p.y=R.y+cy*s;n.contact=true;n.onRock=true;n.mu=(R.r<0.09?0.60:0.40)*n.mat.muF;const nl=Math.hypot(cx,cy)||1e-6;n.cnx=cx/nl;n.cny=cy/nl;}}
     }
   }
+  shapeEuroLightTail(dt);                                            // 约束求解后再锁一次轻蝇在重蝇后上方，极端急流也不翻转拓扑
   const tipV=(rodTip.x-tipX0)/dt;
   for(const n of nodes){if(n===nodes.chain[0]){n.v.set(tipV,0,0);continue;}
     n.v.x=(n.p.x-n.pp.x)/dt;n.v.y=(n.p.y-n.pp.y)/dt;
@@ -614,10 +623,11 @@ function stepEuro(dt){
       if(vdn>0){const keep=n.mat.e/1.6;n.v.x-=vdn*n.cnx*(1-keep);n.v.y-=vdn*n.cny*(1-keep);}
       const vtx=n.v.x-vdn*n.cnx,vty=n.v.y-vdn*n.cny;const vt=Math.hypot(vtx,vty);
       if(vt>1e-6){
-        // pen 是本帧最大接触修正量，不再把 8 次约束迭代重复相加；张力升高时静摩擦也会被提拉削弱。
-        const vn=n.pen/dt;
-        const lift=(n.type==='bait'&&EURO)?Math.max(0.22,1-Math.max(0,EURO.tension-0.78)*3.2):1;
-        const dv=Math.min(vt,n.mu*lift*(vn+g*n.wf*dt*2));n.v.x-=vtx/vt*dv;n.v.y-=vty/vt*dv;}
+        // 约束求解造成的微小穿透不能直接当成无限大的法向冲量；否则小时间步会把一次轻擦放大成急停。
+        const impact=Math.min(0.32,n.pen/dt),support=g*n.wf*dt*1.35;
+        const roll=(n.type==='bait')?(n.onRock?0.62:0.38):(n.type==='leader'?0.12:1);
+        const lift=(n.type==='bait'&&EURO)?Math.max(0.18,1-Math.max(0,EURO.tension-0.94)*4.5):1;
+        const dv=Math.min(vt,n.mu*roll*lift*(support+impact*0.18));n.v.x-=vtx/vt*dv;n.v.y-=vty/vt*dv;}
       if(n.wedged>0){n.wedged-=dt*(2+EURO.tension*6);n.v.x*=0.25;n.v.y*=0.25;}
       // 触底不等于钉死：底层流与竿尖张力会让 nymph 以低于当地水速的速度向下游蹭行。
       if(n.type==='bait'&&phase==='drift'&&n.wedged<=0){
@@ -626,9 +636,9 @@ function stepEuro(dt){
         if(n.v.x<carry)n.v.x=carry;
       }
    // 卡缝：leader 张力越大越快脱出
-      if((n.type==='bait')&&Math.floor(simT*12)!==Math.floor((simT-dt)*12))marks.push(n.p.x,n.p.y+0.004,n.p.z,n.bt==='tung'?1:2);}}
+      if(n.type==='bait'&&simT-n.lastMarkT>0.45){marks.push(n.p.x,n.p.y+0.004,n.p.z,n.bt==='tung'?1:2);n.lastMarkT=simT;}}}
   {const C=euroControlFly(),dxT=C.p.x-rodTip.x,dyT=C.p.y-rodTip.y,ls=euroLeaderState();EURO.tension=Math.hypot(dxT,dyT)/ERIG.leaderLen;EURO.slack=ls.slack;EURO.path=ls.path;EURO.rest=ls.rest;}   // 上重下轻时张力计到重蝇，轻蝇尾段不反向抬高重蝇
-  if(EURO.tension>0.97)for(const n of nodes)n.wedged=0;   // leader 拉直到位 → 强制脱出
+  if(EURO.tension>0.995)for(const n of nodes)n.wedged=0;   // leader 拉直到位 → 强制脱出
   const anyIn=nodes.some(n=>n.p.y<0);
   if(phase==='air'&&anyIn){phase='sink';EURO.landT=0;EURO.landTipX=rodTip.x;}
   if(phase==='sink'&&(EURO.landT||0)>=1.50&&(M.contact||J.contact||M.p.y<bed(M.p.x,M.p.z)+0.45||simT>4))phase='drift';
@@ -774,7 +784,7 @@ function fishUpdate(dt){
   const guideLow=eu?Math.max(0,Math.min(1,(guideGap-0.04)/0.30)):1;
   const guideHigh=eu&&guideGap>1.60?Math.max(0.35,1-(guideGap-1.60)/1.50):1;
   const sGuide=guideLow*guideHigh,T=eu&&EURO?EURO.tension:0;
-  const sTension=eu?Math.max(0,1-Math.abs(T-0.90)/0.18):1;
+  const sTension=eu?Math.max(0,1-Math.abs(T-0.985)/0.12):1;
   const mainBelly=eu?euroBellyAmount(rodTip,C.p):0;
   const sBelly=eu?Math.max(0.35,1-Math.abs(mainBelly-0.065)/0.11):1;
   const euroHold=eu?Math.sqrt(sGuide*sTension*sBelly):1;
@@ -807,13 +817,15 @@ function fishUpdate(dt){
 }
 /* ===== 完美演示：自动调 holding back ===== */
 let AUTO=false,autoHb=0.45;const AS={sp:0,lead:0,off:0,frac:0,init:false,msg:'',highT:0};
-function resetEuroAutoState(){Object.assign(AS,{euInit:false,runX:0,segment:0,touchCount:0,lastTouchX:-1e9,noTouchUntilX:-1e9,contactPrev:false,touchCool:0,liftBurst:0,stall:0,tSince:0,tr:[],msg:''});}
+function resetEuroAutoState(){Object.assign(AS,{euInit:false,downReady:false,runX:0,segment:0,touchCount:0,lastTouchX:-1e9,noTouchUntilX:-1e9,contactPrev:false,touchCool:0,liftBurst:0,stall:0,tSince:0,tr:[],msg:''});}
 function autoLead(dt){
   if(!AUTO||P.mode!=='euro'||(phase!=='drift'&&phase!=='sink'))return;
   if(phase==='sink'&&EURO&&(EURO.landT||0)<1.50)return;                 // 先让松弛线组落水，1.5s 绷紧完成后才启动自动控线
   const C=euroControlFly(),off=C.p.y-bed(C.p.x,C.p.z)-C.r,T=EURO?EURO.tension:0,contactNow=!!(M.contact||J.contact);
   // 每 5m 作为一个 dead-drift 单元，目标是 2–3 次短暂擦底，而不是持续贴底。
   if(!AS.euInit){resetEuroAutoState();AS.euInit=true;AS.runX=C.p.x;AS.lastTouchX=C.p.x-2;}
+  // 5 米计数从“确认到底”位置开始，入水与下沉阶段的偶发碰底不占用正式 drift 的找底次数。
+  if(EURO.downX!==null&&!AS.downReady){AS.downReady=true;AS.runX=EURO.downX;AS.segment=0;AS.touchCount=0;AS.lastTouchX=EURO.downX-2;AS.noTouchUntilX=-1e9;AS.contactPrev=contactNow;AS.touchCool=0;AS.liftBurst=0;AS.tr=[];}
   const travel=Math.max(0,C.p.x-AS.runX),segment=Math.floor(travel/5),segDist=travel-segment*5;
   if(segment!==AS.segment){AS.segment=segment;AS.touchCount=0;AS.lastTouchX=C.p.x-2;AS.noTouchUntilX=-1e9;AS.contactPrev=contactNow;AS.touchCool=0;AS.liftBurst=0;AS.tr=[];}
   AS.touchCool=Math.max(0,AS.touchCool-dt);AS.liftBurst=Math.max(0,AS.liftBurst-dt);
@@ -821,10 +833,10 @@ function autoLead(dt){
   if(freshTouch){AS.touchCount=Math.min(3,AS.touchCount+1);AS.lastTouchX=C.p.x;AS.noTouchUntilX=C.p.x+1.35;AS.touchCool=0.90;AS.liftBurst=1.0;}
   AS.contactPrev=contactNow;
 
-  // 5m 内两个主要找底窗口，末段保留一个很短的第三窗口；实际通常是 2 次，河床刚好抬高时才会有第 3 次。
-  const touchSlots=[0.75,2.85,4.65],nextTouchAt=touchSlots[AS.touchCount]??99;
+  // 5m 内主动安排两次找底；粗糙河床与石块可自然多出一次短触底，不在收尾阶段强压第三次。
+  const touchSlots=[0.75,2.85],nextTouchAt=touchSlots[AS.touchCount]??99;
   const seekBottom=AS.touchCount<3&&segDist>=nextTouchAt&&C.p.x>=AS.noTouchUntilX&&AS.liftBurst<=0;
-  const targetOff=AS.liftBurst>0?0.16:seekBottom?0.025:0.13;
+  const targetOff=AS.liftBurst>0?0.18:seekBottom?-0.060:0.14;
 
   // 只在“刚擦到”的一帧给很小的上提脉冲，后续高度全由竿尖控制，不再直接托着蝇跑。
   if(freshTouch){
@@ -834,15 +846,16 @@ function autoLead(dt){
   const depth=-bed(C.p.x,C.p.z);
   // leader 长度和蝇重属于用户选定的线组配置，自动控线绝不修改。
   // ① 用完整线长、当前水平 lead、水深和目标离底高度反算竿尖高度。
-  const mainLen=ERIG.leaderLen,hGap=Math.max(0.05,Math.abs(rodTip.x-C.p.x)),usable=Math.max(0.40,mainLen-0.045);
+  const mainLen=ERIG.leaderLen,hGap=Math.max(0.05,Math.abs(rodTip.x-C.p.x)),usable=Math.max(0.40,mainLen*0.998);
   const vSpan=Math.sqrt(Math.max(0.01,usable*usable-Math.min(hGap,usable-0.01)**2));
   const hTarget=Math.max(0.3,Math.min(2.0,vSpan-depth+targetOff));
   AS.stall=(Math.abs(C.v.x)<0.03&&contactNow)?(AS.stall||0)+dt:0;
-  let dh=(hTarget-P.rodH)*(AS.liftBurst>0?4.2:2.2);
-  if(contactNow)dh+=0.90;
-  if(AS.stall>0.35)dh+=1.35;
-  if(T<0.84)dh+=0.25;
-  if(T>0.98)dh-=0.45;
+  let dh=(hTarget-P.rodH)*(AS.liftBurst>0?4.8:2.8);
+  if(seekBottom&&!contactNow&&off>0.002)dh=Math.min(dh,-0.55-Math.min(0.80,off*5)); // 找底只通过压低竿尖完成，不改蝇重或线长
+  if(contactNow)dh+=1.35;
+  if(AS.stall>0.35)dh+=1.55;
+  if(T<0.94)dh+=0.18;
+  if(T>1.025&&!contactNow)dh-=0.20;
   P.rodH=Math.max(0.3,Math.min(2.0,P.rodH+dh*dt));
 
   // ② lead 只做水平速度微调，离底高度主要交给 rodH。
@@ -854,7 +867,7 @@ function autoLead(dt){
   if(AS.liftBurst>0)d+=0.08;
   if(T<0.80)d-=0.06;
   P.lead=Math.max(0.75,Math.min(1.30,P.lead+d*dt*0.9));
-  AS.msg=AS.liftBurst>0?`第 ${AS.touchCount} 次擦底 · 抬竿`:(seekBottom?`找底窗口 · ${AS.touchCount}/3`:`离底漂流 · ${AS.touchCount}/3`);
+  AS.msg=AS.liftBurst>0?`第 ${AS.touchCount} 次擦底 · 抬竿`:(seekBottom?`找底窗口 · 已触底 ${AS.touchCount} 次`:`离底漂流 · 已触底 ${AS.touchCount} 次`);
   $('lead').value=Math.round(P.lead*100);$('vLead').textContent=P.lead.toFixed(2)+'× · '+AS.msg;
   $('rodH').value=P.rodH.toFixed(1);$('vRodH').textContent=P.rodH.toFixed(1)+' m';
 }
