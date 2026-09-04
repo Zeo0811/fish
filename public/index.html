@@ -3,7 +3,8 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-<title>Centerpin 线组 · 河流物理模拟 v3</title>
+<title>Centerpin · 河流物理模拟 v77</title>
+<link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='7' fill='%23182226'/%3E%3Cpath d='M5 22c4-4 7-4 11 0s7 4 11 0' fill='none' stroke='%232A8CA0' stroke-width='3' stroke-linecap='round'/%3E%3Cpath d='M7 7c8 0 12 3 12 9v5c0 4 6 4 7 0' fill='none' stroke='%23EEEAE0' stroke-width='2.4' stroke-linecap='round'/%3E%3Ccircle cx='19' cy='19' r='2.5' fill='%23F0632A'/%3E%3C/svg%3E">
 <style>
   :root{--bone:#EEEAE0;--ink:#182226;--ink2:#5B6A70;--rule:#CFC8B8;--float:#F0632A;--water:#2A8CA0;--lead:#7C858B;--tung:#C79A3B;--moss:#4E9E5F}
   *{margin:0;padding:0;box-sizing:border-box}
@@ -13,6 +14,8 @@
 
   #left{left:14px;top:14px;width:250px;display:flex;flex-direction:column;gap:10px;position:fixed;z-index:5}
   #title{padding:10px 14px 9px;position:static}
+  .title-lockup{display:flex;align-items:center;gap:8px}
+  .brand-icon{width:27px;height:27px;flex:0 0 27px;display:block;filter:drop-shadow(0 2px 3px rgba(13,32,41,.18))}
   #title h1{font-size:14.5px;font-weight:600}
   #title p{font-size:11px;color:var(--ink2);margin-top:2px}
   #phase{display:inline-block;margin-top:6px;padding:2px 8px;border-radius:3px;font-size:11px;font-weight:600;color:#fff;background:var(--water)}
@@ -69,8 +72,17 @@
 <div id="left">
   <div id="title" class="card">
     <div class="btns" style="margin:0 0 8px"><button id="mCP" class="on">Centerpin</button><button id="mEU" class="ghost">Euro nymph</button></div>
-    <h1 id="titleH">Centerpin 线组 · 河流物理模拟</h1>
-    <p>镜头垂直于流向，跟随浮漂。拖动旋转，滚轮或双指缩放。</p>
+    <div class="title-lockup">
+      <svg class="brand-icon" viewBox="0 0 32 32" role="img" aria-label="河流线组模拟图标">
+        <title>河流线组模拟</title>
+        <rect width="32" height="32" rx="7" fill="#182226"/>
+        <path d="M5 22c4-4 7-4 11 0s7 4 11 0" fill="none" stroke="#2A8CA0" stroke-width="3" stroke-linecap="round"/>
+        <path d="M7 7c8 0 12 3 12 9v5c0 4 6 4 7 0" fill="none" stroke="#EEEAE0" stroke-width="2.4" stroke-linecap="round"/>
+        <circle cx="19" cy="19" r="2.5" fill="#F0632A"/>
+      </svg>
+      <h1 id="titleH">Centerpin · 河流物理模拟</h1>
+    </div>
+    <p id="viewHint">镜头垂直于流向，跟随浮漂。拖动旋转，滚轮或双指缩放。</p>
     <span id="phase" class="air">空中</span>
   </div>
   <div id="gauge" class="card">
@@ -109,7 +121,7 @@
     <option value="mixed">混合分区（每 62 m 循环）</option><option value="rubble">密集碎石（全程）</option><option value="cobble">卵石（全程）</option><option value="boulder">卵石 + 大石（全程）</option><option value="gravel">砾石（全程）</option><option value="sand">沙底（全程）</option><option value="bedrock">基岩板（全程）</option></select></div>
   <h2>河流</h2>
   <div class="btns" style="margin-top:0"><button id="bFlat" class="ghost">水深恒定（河床不起伏）</button></div>
-  <div class="s"><label>基准水深 <span style="color:var(--ink2)">（DIY 后 = 漂→最下铅）</span><b id="vDepth">1.50 m</b></label><input type="range" id="depth" min="0.8" max="3.2" step="0.01" value="1.5"></div>
+  <div class="s"><label>基准水深 <span id="depthHint" style="color:var(--ink2)">（DIY 后 = 漂→最下铅）</span><b id="vDepth">1.50 m</b></label><input type="range" id="depth" min="0.8" max="3.2" step="0.01" value="1.5"></div>
   <div class="s"><label>表层流速 <span id="vRegime" style="color:var(--water)">中流</span><b id="vFlow">1.0 m/s</b></label><input type="range" id="flow" min="0.3" max="2.5" step="0.05" value="1.0"></div>
   <div id="cpPanel">
   <h2>holding back</h2>
@@ -143,13 +155,20 @@
   
 </div>
 
+<div id="driftEndWrap" role="dialog" aria-modal="true" aria-labelledby="driftEndTitle" style="display:none;position:fixed;inset:0;z-index:35;background:rgba(10,20,26,.62);backdrop-filter:blur(3px)">
+ <div class="card" style="position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);width:min(420px,92vw);padding:20px 22px">
+  <h2 id="driftEndTitle" style="font-size:16px;font-weight:600">本次 drift 已完成</h2>
+  <p style="font-size:12px;color:var(--ink2);margin-top:6px">站定状态下，末蝇已经走完到底后的 5 米有效漂流。</p>
+  <div class="btns" style="margin-top:16px"><button id="driftContinue">一直飘 <small>切换为跟走模式</small></button><button id="driftStop" class="ghost">结束本次</button></div>
+ </div>
+</div>
 
 <div id="biteWrap" style="display:none;position:fixed;inset:0;z-index:30;background:rgba(10,20,26,.6);backdrop-filter:blur(3px)">
  <div class="card" style="position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);width:min(520px,94vw);max-height:92vh;overflow:auto;padding:18px 20px">
   <div style="display:flex;justify-content:space-between;align-items:center"><h2 style="font-size:15px;font-weight:600">中鱼了 🎣</h2><button id="biteX" class="ghost" style="flex:0 0 auto;min-width:72px;padding:5px 14px">关闭</button></div>
   <div id="biteBody"></div>
   <div id="biteSnap" style="margin:8px 0"></div>
-  <p class="note">只有当饵与所在层水流同速、领先浮漂、在鱼的取食层、没有死拖底、没惊到鱼、鱼正开口时，才会咬钩。</p>
+  <p class="note" id="biteNote">只有当饵与所在层水流同速、领先浮漂、在鱼的取食层、没有死拖底、没惊到鱼、鱼正开口时，才会咬钩。</p>
   <div class="btns"><button id="biteClose">此处重抛</button><button id="biteStay" class="ghost">回到起点重抛</button><button id="biteSave" class="ghost">保存快照</button></div>
  </div>
 </div>
@@ -258,7 +277,7 @@ function waterVel(x,y,z,t){
   const zt=zoneAt(x).t;const z0=(zt===0?0.006:zt===5?0.04:zt>=2?0.03:0.015)*h;   // 粗糙度随底质
   const fLog=Math.max(0,Math.log(Math.max(hy,z0)/z0)/Math.log(h/z0));
   // 真实粗糙河床：近底并非静止，石缝间/湍流交换仍有可观流速（越粗糙下限越高）
-  const fMin=(zt===0?0.08:zt===5?0.22:zt>=2?0.18:0.13);
+  const fMin=(zt===0?0.13:zt===5?0.32:zt>=2?0.27:0.20);              // 近底仍保留约表层 13–32% 的有效流速
   const f=fMin+(1-fMin)*fLog;
   let u=P.flow*f*Math.pow(P.depth/h,0.45), v=0;
   for(const B of BOULDERS){
@@ -272,7 +291,7 @@ function waterVel(x,y,z,t){
 
 /* ================= 物理 ================= */
 const g=9.81;
-const MAT={lead:{muF:1.00,e:0.05,rho:11340},tung:{muF:0.75,e:0.25,rho:19300},steel:{muF:0.80,e:0.20,rho:7800},soft:{muF:1.25,e:0.05,rho:1100},line:{muF:0.9,e:0.1,rho:1150}};
+const MAT={lead:{muF:1.00,e:0.05,rho:11340},tung:{muF:0.42,e:0.12,rho:19300},steel:{muF:0.50,e:0.10,rho:7800},soft:{muF:0.72,e:0.04,rho:1100},line:{muF:0.58,e:0.06,rho:1150}};
 function radiusOf(m,rho){return Math.cbrt(3*m/(4*Math.PI*rho));}
 class Node{constructor(m,r,k,wf){this.m=m;this.r=r;this.k=k;this.wf=wf;this.mat=MAT.line;this.p=new THREE.Vector3();this.v=new THREE.Vector3();this.pp=new THREE.Vector3();this.contact=false;this.onRock=false;this.mu=0;this.pen=0;this.wedged=0;this.cnx=0;this.cny=1;this.iw=1/m;this.type='line';}}
 let nodes=[],cons=[],F,FT,O,J,M;
@@ -305,11 +324,14 @@ const BAIT_DEF={
   grass:{name:'真草（灯笼草）',mk:()=>{const n=new Node(3e-4,0.012,0.75,0.03);n.push=1.9;n.mat=MAT.soft;return n;}},
 };
 function shotNode(w){const m=w/1000;const n=new Node(m,Math.max(0.002,radiusOf(m,MAT.lead.rho)),0.06+w*0.004,1-1/11.34);n.type='shot';n.w=w;n.mat=MAT.lead;return n;}
+function euroMainLen(){return ERIG.leaderLen+(ERIG.topo==='heavyTag'?ERIG.tagUp:0);}
+function euroControlFly(){return ERIG.topo==='heavyTag'?J:M;}           // 上重下轻时，重蝇是主 leader 的控线锚点
 function buildEuroRig(atX){
   nodes=[];cons=[];const add=n=>(nodes.push(n),n);
   const xs=(typeof atX==='number')?atX:1.2;
   // 竿尖（运动学控制点，不参与动力学）
-  const reach=Math.max(0.4,Math.sqrt(Math.max(0.04,ERIG.leaderLen*ERIG.leaderLen-(P.rodH+0.3)*(P.rodH+0.3))));
+  const mainLen=euroMainLen();
+  const reach=Math.max(0.4,Math.sqrt(Math.max(0.04,mainLen*mainLen-(P.rodH+0.3)*(P.rodH+0.3))));
   // 站位：竿尖最多在站位上下游各 R 米（竿从上游 45° 摆到下游 45°）
   const R=ERIG.rodLen*0.52+reach*0.65;
   if(typeof atX==='number')STAND=atX; else STAND=xs+R*2.0;   // 抛点在站位上游 1.6R（给下沉时间）
@@ -342,17 +364,20 @@ function buildEuroRig(atX){
     for(let i=1;i<chain.length-1;i++){chain[i].prev=chain[i-1];chain[i].next=chain[i+1];}
     upFly=heavyFly;lowFly=tailFly;
   }
-  nodes.chain=chain;nodes.tag=tagNodes;nodes.tagAtNode=tagAtNode;
+  nodes.chain=chain;nodes.chainCons=chain.slice(0,-1).map((n,i)=>cons.find(c=>c.a===n&&c.b===chain[i+1]));nodes.tag=tagNodes;nodes.tagAtNode=tagAtNode;
   F=chain[0];FT=chain[0];O=null;J=upFly;M=lowFly;
   // 初始：竿尖下方斜向上游铺开，蝇先入水
-  // 初始：leader 从竿尖斜拉到水面下的蝇（沿单位方向严格按段长铺开）
-  const dxu=reach/ERIG.leaderLen, dyu=-P.rodH/ERIG.leaderLen;
-  let acc=0;chain[0].p.set(rodTip.x,rodTip.y,0);chain[0].v.set(0.6,0,0);
-  for(let i=1;i<chain.length;i++){acc+=seg[i-1];chain[i].p.set(rodTip.x+dxu*acc,rodTip.y+dyu*acc,0);chain[i].v.set(0.5,-0.4,0);}
+  // 初始抛投保留约 25% 余线：leader 以松弛浅弧落水，不是一开始就拉成直线。
+  const slackReach=reach*0.74,slackDrop=P.rodH*0.92;
+  let acc=0;chain[0].p.set(rodTip.x,rodTip.y,0);chain[0].v.set(0.55,-0.10,0);
+  for(let i=1;i<chain.length;i++){acc+=seg[i-1];const t=Math.max(0,Math.min(1,acc/mainLen)),wave=Math.sin(Math.PI*t);
+    chain[i].p.set(rodTip.x+slackReach*t+0.07*Math.sin(t*Math.PI*2)*wave,rodTip.y-slackDrop*t-0.10*wave,0);
+    chain[i].v.set(0.42+0.12*t,-0.35-0.18*t,0);}
   if(tagAtNode)tagNodes.forEach((n,i)=>{n.p.set(tagAtNode.p.x+0.02*(i+1),tagAtNode.p.y-0.05*(i+1),0);n.v.set(0.6,-0.5,0);});
   nodes.forEach(n=>{n.pp.copy(n.p);n.contact=false;});
-  EURO={tension:0,drift:0,downX:null,zoneT:0,tipBase:null};simT=0;phase='air';snagT=0;trail.length=0;marks.length=0;
-  baitHist=new Map();prevBaitV=new Map();lastQ=null;AS.init=false;paused=false;setPhase();
+  EURO={tension:0,slack:0,path:0,rest:mainLen,drift:0,downX:null,zoneT:0,tipBase:null,walkOffset:0,walkStart:M.p.x,landT:0};simT=0;phase='air';snagT=0;trail.length=0;marks.length=0;
+  if($('driftEndWrap'))$('driftEndWrap').style.display='none';
+  baitHist=new Map();prevBaitV=new Map();lastQ=null;AS.init=false;AS.euInit=false;paused=false;setPhase();
   if(typeof rebuildVisuals==='function')rebuildVisuals();
   if(typeof buildGauge==='function')buildGauge();else if(typeof gaugeBuilt!=='undefined')gaugeBuilt=false;
   if(typeof updateSummary==='function')updateSummary();
@@ -397,40 +422,152 @@ function buildRig(atX){
   if(typeof updateSummary==='function')updateSummary();
 }
 function floatTilt(){return -BODY.th*180/Math.PI;}
-function setPhase(){const el=$('phase');const m={air:['空中','air'],sink:['入水下沉','sink'],drift:['漂流中','drift'],snag:['挂底','snag'],done:['漂完 · 点击重新抛投','done'],bite:['中鱼！','drift'],over:['drift 结束 · 提竿重抛','done']};el.textContent=m[phase][0];el.className=m[phase][1];}
+function setPhase(){const el=$('phase');const eu=P.mode==='euro';const m={air:['空中','air'],sink:['入水下沉','sink'],drift:[eu?'控线漂流中':'漂流中','drift'],snag:['挂底','snag'],done:[eu?'线路结束 · 点击重新抛投':'漂完 · 点击重新抛投','done'],bite:['中鱼！','drift'],over:['drift 结束 · 请选择','done']};el.textContent=m[phase][0];el.className=m[phase][1];
+  if(eu&&phase==='sink'&&EURO)el.textContent=(EURO.landT||0)<0.40?'松弛落水':'逐步收紧';}
+
+function showEuroDriftEnd(){if(P.mode!=='euro'||WALK)return;const w=$('driftEndWrap');w.style.display='block';requestAnimationFrame(()=>$('driftContinue').focus());}
+function euroWalkLead(span){
+  // 常规线长下保留约 0.3–0.8m 的可见 lead；极短 leader/极高竿尖时按可用水平跨度自动收窄。
+  return Math.max(0.08,Math.min(0.30,span*0.55),span*Math.max(0.26,Math.min(0.52,0.34*P.lead)));
+}
+function euroStationLead(span){
+  // 固定站位也必须看得出竿尖在下游，不能退化成原来的 5cm 象征性 lead。
+  return Math.max(0.06,Math.min(0.28,span*0.48),span*0.20);
+}
+function setEuroWalk(on){WALK=!!on;const b=$('bWalk');b.classList.toggle('on',WALK);b.textContent=WALK?'一直飘中':'跟着走';
+  if(WALK){
+    $('driftEndWrap').style.display='none';
+    // 开始跟走时把控线基准放到末蝇下游：人和饵不是等位平移，竿尖要保持 lead。
+    if(EURO&&M){
+      const C=euroControlFly(),vNeed=P.rodH+Math.max(0.1,-C.p.y);
+      const controlLen=ERIG.leaderLen,span=Math.sqrt(Math.max(0.01,controlLen*controlLen-vNeed*vNeed));
+      const walkLead=euroWalkLead(span);
+      EURO.tipBase=Math.max(EURO.tipBase==null?rodTip.x:EURO.tipBase,C.p.x+walkLead);
+    }
+    if(phase==='over'){phase='drift';paused=false;setPhase();}
+  }}
+
+// 跟走模式循环使用已经生成的河段，并累计实际里程，避免到可视河床末端后再次停止。
+function wrapEuroWorldIfNeeded(){if(!WALK||!EURO||M.p.x<145)return;const dx=PERIOD;
+  for(const n of nodes){n.p.x-=dx;n.pp.x-=dx;}
+  rodTip.x-=dx;STAND-=dx;if(EURO.tipBase!=null)EURO.tipBase-=dx;camX-=dx;
+  EURO.walkOffset=(EURO.walkOffset||0)+dx;trail.length=0;marks.length=0;
+  for(const f of FISH){f.alert=0;f.p=0;f.dart=0;f.x=f.home.x;f.y=f.home.y;}
+}
+
+// 整条 Euro leader 的实际松量：各节真实长度之和减去当前路径长度。
+// 竿尖会主动收掉大部分松量，只留下少量由水流形成的连续 belly；水上和水下不再分开处理。
+function euroLeaderState(ch=nodes.chain,edges=nodes.chainCons){
+  if(!ch||!edges||ch.length<2)return {path:0,rest:0,slack:0};
+  let path=0,rest=0;
+  for(let i=0;i<ch.length-1;i++){const e=edges[i];if(!e)continue;const a=ch[i].p,b=ch[i+1].p;path+=Math.hypot(b.x-a.x,b.y-a.y,b.z-a.z);rest+=e.d;}
+  return {path,rest,slack:Math.max(0,rest-path)};
+}
+
+function euroBellyAmount(a,b){
+  const leadGap=a.x-b.x;
+  if(leadGap<=0)return 0;
+  // 与实际保留的松量对齐：默认约 6–7cm，快水最多约 10cm。仍限制在水平 lead 的 20% 内，避免顶端反向成 S 弯。
+  return Math.max(0,Math.min(0.105,0.032+P.flow*0.033,leadGap*0.20));
+}
+function euroTightenProgress(){
+  if(phase==='air'||!EURO)return 0;
+  const t=Math.max(0,Math.min(1,((EURO.landT||0)-0.40)/1.10));
+  return t*t*(3-2*t);
+}
+
+// 整条 leader 是一个连续的受力体：以竿尖—末蝇的斜线为主，只留一点下游水流形成的整体 belly。
+function shapeEuroLeader(dt){
+  if(phase==='air'||!nodes.chain||nodes.chain.length<3)return;
+  const ch=nodes.chain,edges=nodes.chainCons;
+  const end=euroControlFly(),endI=ch.indexOf(end);if(endI<2)return;
+  let rest=0;for(let i=0;i<endI;i++){const e=edges[i];if(e)rest+=e.d;}
+  if(rest<=0)return;
+  const a=rodTip,b=end.p;
+  const belly=euroBellyAmount(a,b);
+  const tighten=euroTightenProgress();if(tighten<=0)return;
+  const alpha=(1-Math.exp(-(WALK?9:5.5)*dt))*tighten;                // 落水后从松弛逐渐过渡到整体微绷
+  let along=0;
+  for(let i=1;i<endI;i++){
+    const e=edges[i-1];if(!e)continue;along+=e.d;
+    const n=ch[i];if(n.type!=='leader')continue;
+    const t=Math.max(0,Math.min(1,along/rest)),arc=4*t*(1-t);
+    const tx=a.x+(b.x-a.x)*t+belly*arc;
+    const ty=a.y+(b.y-a.y)*t;
+    n.p.x+=(tx-n.p.x)*alpha;n.p.y+=(ty-n.p.y)*alpha;n.p.z+=(0-n.p.z)*alpha;
+  }
+}
+
+function shapeEuroTag(dt){
+  if(phase==='air'||!nodes.tagAtNode||!nodes.tag||nodes.tag.length<2)return;
+  const root=nodes.tagAtNode.p,tip=nodes.tag[nodes.tag.length-1].p;
+  const tighten=euroTightenProgress();if(tighten<=0)return;
+  const alpha=(1-Math.exp(-12*dt))*tighten,belly=Math.min(0.003,ERIG.tagLen*0.02); // T 型支线也随主线逐步收紧
+  for(let i=0;i<nodes.tag.length-1;i++){
+    const n=nodes.tag[i];if(n.type!=='leader')continue;
+    const t=(i+1)/nodes.tag.length,arc=4*t*(1-t);
+    const tx=root.x+(tip.x-root.x)*t+belly*arc,ty=root.y+(tip.y-root.y)*t;
+    n.p.x+=(tx-n.p.x)*alpha;n.p.y+=(ty-n.p.y)*alpha;n.p.z+=(0-n.p.z)*alpha;
+  }
+}
+
+function shapeEuroLightTail(dt){
+  if(phase==='air'||ERIG.topo!=='heavyTag'||!J||!M)return;
+  // 重蝇 J 是沉降锚点；末端轻蝇 M 被底层流托在其后上方，不能反过来把重蝇排到上面。
+  const minLightY=J.p.y+0.055,alpha=1-Math.exp(-6*dt);
+  if(M.p.y<minLightY){M.p.y+=(minLightY-M.p.y)*alpha;M.v.y=Math.max(M.v.y,0.08);}
+  const ch=nodes.chain,aI=ch.indexOf(J),bI=ch.indexOf(M);if(aI<0||bI<=aI+1)return;
+  for(let i=aI+1;i<bI;i++){const n=ch[i];if(n.type!=='leader')continue;const t=(i-aI)/(bI-aI),arc=4*t*(1-t);
+    const tx=J.p.x+(M.p.x-J.p.x)*t+0.003*arc,ty=J.p.y+(M.p.y-J.p.y)*t;
+    n.p.x+=(tx-n.p.x)*alpha;n.p.y+=(ty-n.p.y)*alpha;n.p.z+=(0-n.p.z)*alpha;}
+}
 
 function stepEuro(dt){
   simT+=dt;
-  const M0=M;
+  const M0=euroControlFly();
+  {const ls=euroLeaderState();EURO.slack=ls.slack;EURO.path=ls.path;EURO.rest=ls.rest;}
   // 竿尖：以 lead × 蝇所在层水速前进；高度可调
   // 竿尖以"蝇所在层水速 × lead"前进；lead>1 → 竿尖逐渐超前于蝇（拉紧、提蝇），<1 → 落后（松弛）
   const wM=waterVel(M0.p.x,Math.min(-0.01,M0.p.y),M0.p.z,simT).x;
   rodTip.y=P.rodH;const tipX0=rodTip.x;
   if(phase==='air'){rodTip.x+=1.2*dt;}
   else{
+    const landing=phase==='sink'&&(EURO.landT||0)<1.50;
+    if(landing){if(EURO.landTipX==null)EURO.landTipX=rodTip.x;EURO.landT+=dt;}
+    const tighten=landing?euroTightenProgress():1;
     // 竿尖有独立的前进基准：以"蝇所在层水速"为节拍推进，不依赖蝇的实际位置。
     // 这样蝇被石头卡住时竿尖仍会前行，把它拖过去（"哒—拖—哒"），不会互相锁死。
-    const reachT=Math.max(0.4,Math.sqrt(Math.max(0.04,ERIG.leaderLen*ERIG.leaderLen-(P.rodH+0.3)*(P.rodH+0.3))));
+    const controlLen=ERIG.leaderLen;
+    const reachT=Math.max(0.4,Math.sqrt(Math.max(0.04,controlLen*controlLen-(P.rodH+0.3)*(P.rodH+0.3))));
     const RT=ERIG.rodLen*0.52+reachT*0.65;
-    EURO.tipBase=(EURO.tipBase==null)?rodTip.x:EURO.tipBase+wM*dt;      // 独立基准，匀速随水流推进
+    EURO.tipBase=landing?rodTip.x:((EURO.tipBase==null)?rodTip.x:EURO.tipBase+wM*dt); // 松弛落水阶段先不收线
     const vNeed=P.rodH+Math.max(0.1,-M0.p.y);
-    const span=Math.sqrt(Math.max(0.01,ERIG.leaderLen*ERIG.leaderLen-vNeed*vNeed));
+    const span=Math.sqrt(Math.max(0.01,controlLen*controlLen-vNeed*vNeed));
     const aheadTarget=M0.p.x+span*Math.max(0.0,Math.min(0.92,0.58*P.lead));   // lead 决定相对蝇的超前量
+    // 跟走时仍要由竿尖在下游带着整条 leader，不能只让站位与饵同速平移。
+    const walkLead=euroWalkLead(span),controlLead=WALK?walkLead:euroStationLead(span);
     // 基准与目标混合：蝇正常漂时以目标为准；蝇卡住时基准占主导，保证竿尖继续走
     const stalled=M0.contact&&Math.abs(M0.v.x)<0.05;
     const mix=stalled?0.82:0.25;
-    const target=Math.min(aheadTarget*(1-mix)+EURO.tipBase*mix, EURO.tipBase+span*0.95);
+    let target=Math.min(aheadTarget*(1-mix)+EURO.tipBase*mix, EURO.tipBase+span*0.95);
+    target=Math.max(target,M0.p.x+controlLead);
+    if(landing)target=rodTip.x+(target-rodTip.x)*tighten;
     rodTip.x+=(target-rodTip.x)*Math.min(1,dt*2.2);
     // leader 绷死 → 竿尖回撤放松（保持微绷才有 dead drift 和读口能力）
-    if(EURO.tension>0.94){const back=Math.min(2.2,(EURO.tension-0.94)*40);rodTip.x-=back*dt;EURO.tipBase-=back*0.8*dt;}
-    if(rodTip.x<M0.p.x-0.3)rodTip.x=M0.p.x-0.3;                          // 竿尖不落到蝇后方太多
-    EURO.tipBase=Math.max(EURO.tipBase,rodTip.x-span*0.5);               // 基准不掉队
-    if(EURO.downX===null){const inZone=(M0.p.y-bed(M0.p.x,M0.p.z)-M0.r)<0.20;
+    if(!landing&&EURO.tension>0.94){const back=Math.min(2.2,(EURO.tension-0.94)*40);rodTip.x-=back*dt;EURO.tipBase-=back*0.8*dt;}
+    // 整体紧线控制：流越快允许的 belly 稍大；松量过多就向下游收线，过少则轻微回撤。
+    const bellyTarget=0.035+Math.min(0.065,P.flow*0.035);
+    const takeUp=Math.max(-0.35,Math.min(0.90,(EURO.slack-bellyTarget)*3.2));
+    rodTip.x+=takeUp*dt*tighten;
+    const minTip=landing?EURO.landTipX*(1-tighten)+(M0.p.x+controlLead)*tighten:M0.p.x+controlLead;
+    if(rodTip.x<minTip)rodTip.x=minTip;                                 // 竿尖随收线进度平滑转入下游 lead
+    if(!landing)EURO.tipBase=Math.max(EURO.tipBase,WALK?M0.p.x+walkLead:rodTip.x-span*0.5);
+    if(!landing&&EURO.downX===null){const inZone=(M0.p.y-bed(M0.p.x,M0.p.z)-M0.r)<0.20;
       EURO.zoneT=inZone?(EURO.zoneT||0)+dt:0;
       if(EURO.zoneT>0.8)EURO.downX=M0.p.x-0.4;}
     if(rodTip.x>STAND+RT*0.6)STAND=rodTip.x-RT*0.6;
     const EFF=5.0;
-    if(!WALK&&EURO.downX!==null&&M0.p.x>EURO.downX+EFF&&(phase==='drift'||phase==='sink'))phase='over';
+    if(!WALK&&EURO.downX!==null&&M0.p.x>EURO.downX+EFF&&(phase==='drift'||phase==='sink')){phase='over';showEuroDriftEnd();}
   }
   // 力与积分
   for(const n of nodes){
@@ -446,6 +583,9 @@ function stepEuro(dt){
     else{n.v.x*=0.999;}
     n.pp.copy(n.p);n.p.x+=n.v.x*dt;n.p.y+=n.v.y*dt;n.p.z*=0.995;
   }
+  shapeEuroLeader(dt);
+  shapeEuroTag(dt);
+  shapeEuroLightTail(dt);
   // 约束
   let tens=0;
   for(let it=0;it<8;it++){
@@ -462,7 +602,8 @@ function stepEuro(dt){
       for(const R of rocksNear(n.p.x,n.p.z)){const cx=n.p.x-R.x,cy=n.p.y-R.y,cz=n.p.z-R.z;const dd=Math.sqrt(cx*cx+cy*cy+cz*cz);
         // leader 绷紧时蝇能被拽过石缝：有效碰撞半径随张力收缩（真实里小蝇不会被一颗石头永久挡住）
         const shrink=(n.type==='bait'&&EURO&&EURO.tension>0.90)?Math.min(0.75,(EURO.tension-0.90)*7):0;
-        const rr=(R.r+n.r)*(1-shrink);
+        const hitScale=n.type==='bait'?0.84:1;                         // 蝇钩不按整颗钨珠的包围球去撞石头
+        const rr=(R.r+n.r)*hitScale*(1-shrink);
         if(dd<rr){const s=rr/Math.max(dd,1e-4);n.pen=Math.max(n.pen,rr-dd);n.p.x=R.x+cx*s;n.p.y=R.y+cy*s;n.contact=true;n.onRock=true;n.mu=(R.r<0.09?0.60:0.40)*n.mat.muF;const nl=Math.hypot(cx,cy)||1e-6;n.cnx=cx/nl;n.cny=cy/nl;}}
     }
   }
@@ -478,14 +619,21 @@ function stepEuro(dt){
         const lift=(n.type==='bait'&&EURO)?Math.max(0.22,1-Math.max(0,EURO.tension-0.78)*3.2):1;
         const dv=Math.min(vt,n.mu*lift*(vn+g*n.wf*dt*2));n.v.x-=vtx/vt*dv;n.v.y-=vty/vt*dv;}
       if(n.wedged>0){n.wedged-=dt*(2+EURO.tension*6);n.v.x*=0.25;n.v.y*=0.25;}
+      // 触底不等于钉死：底层流与竿尖张力会让 nymph 以低于当地水速的速度向下游蹭行。
+      if(n.type==='bait'&&phase==='drift'&&n.wedged<=0){
+        const bw=waterVelAt(n.p.x,n.p.y,n.p.z,simT,n.r),tow=Math.max(0,Math.min(1,(EURO.tension-0.78)/0.16));
+        const carry=Math.max(0,bw.x)*(n.onRock?0.34+0.12*tow:0.58+0.16*tow);
+        if(n.v.x<carry)n.v.x=carry;
+      }
    // 卡缝：leader 张力越大越快脱出
       if((n.type==='bait')&&Math.floor(simT*12)!==Math.floor((simT-dt)*12))marks.push(n.p.x,n.p.y+0.004,n.p.z,n.bt==='tung'?1:2);}}
-  {const dxT=M.p.x-rodTip.x,dyT=M.p.y-rodTip.y;EURO.tension=Math.hypot(dxT,dyT)/ERIG.leaderLen;}   // 1.0 = leader 完全拉直
+  {const C=euroControlFly(),dxT=C.p.x-rodTip.x,dyT=C.p.y-rodTip.y,ls=euroLeaderState();EURO.tension=Math.hypot(dxT,dyT)/ERIG.leaderLen;EURO.slack=ls.slack;EURO.path=ls.path;EURO.rest=ls.rest;}   // 上重下轻时张力计到重蝇，轻蝇尾段不反向抬高重蝇
   if(EURO.tension>0.97)for(const n of nodes)n.wedged=0;   // leader 拉直到位 → 强制脱出
   const anyIn=nodes.some(n=>n.p.y<0);
-  if(phase==='air'&&anyIn)phase='sink';
-  if(phase==='sink'&&(M.contact||J.contact||M.p.y<bed(M.p.x,M.p.z)+0.45||simT>4))phase='drift';
-  if(phase!=='done'&&M0.p.x>168)phase='done';
+  if(phase==='air'&&anyIn){phase='sink';EURO.landT=0;EURO.landTipX=rodTip.x;}
+  if(phase==='sink'&&(EURO.landT||0)>=1.50&&(M.contact||J.contact||M.p.y<bed(M.p.x,M.p.z)+0.45||simT>4))phase='drift';
+  wrapEuroWorldIfNeeded();
+  if(!WALK&&phase!=='done'&&M0.p.x>168)phase='done';
   setPhase();
   if(phase==='drift'&&Math.floor(simT*30)!==Math.floor((simT-dt)*30))trail.push(M.p.x,M.p.y,M.p.z);
 }
@@ -620,86 +768,95 @@ function fishUpdate(dt){
   }
   // 咬口判定
   if(phase!=='drift'&&phase!=='sink')return;   // over/done 不再判定
-  const us=waterVel(F.p.x,-0.01,0,simT).x;let best=null;
+  const eu=P.mode==='euro';if(eu&&phase==='sink'&&EURO&&(EURO.landT||0)<1.50)return;
+  const us=eu?0:waterVel(F.p.x,-0.01,0,simT).x;
+  const C=eu?euroControlFly():null,guideGap=eu?rodTip.x-C.p.x:0;
+  const guideLow=eu?Math.max(0,Math.min(1,(guideGap-0.04)/0.30)):1;
+  const guideHigh=eu&&guideGap>1.60?Math.max(0.35,1-(guideGap-1.60)/1.50):1;
+  const sGuide=guideLow*guideHigh,T=eu&&EURO?EURO.tension:0;
+  const sTension=eu?Math.max(0,1-Math.abs(T-0.90)/0.18):1;
+  const mainBelly=eu?euroBellyAmount(rodTip,C.p):0;
+  const sBelly=eu?Math.max(0.35,1-Math.abs(mainBelly-0.065)/0.11):1;
+  const euroHold=eu?Math.sqrt(sGuide*sTension*sBelly):1;
+  let best=null;
   for(const b of baits){
     const pv=prevBaitV.get(b)||b.v.clone();const acc=Math.hypot(b.v.x-pv.x,b.v.y-pv.y)/Math.max(dt,1e-3);prevBaitV.set(b,b.v.clone());
-    const w=waterVel(b.p.x,b.p.y,b.p.z,simT);const off=b.p.y-bed(b.p.x,b.p.z)-b.r;const lead=b.p.x-F.p.x;
+    const w=waterVel(b.p.x,b.p.y,b.p.z,simT);const off=b.p.y-bed(b.p.x,b.p.z)-b.r;const lead=eu?rodTip.x-b.p.x:b.p.x-F.p.x;
     const h=baitHist.get(b)||[];const frac=h.length?h.reduce((a,c)=>a+c,0)/h.length:0;
-    const sSpeed=Math.max(0,1-Math.abs(b.v.x-w.x)/0.3),sVert=Math.max(0,1-Math.abs(b.v.y)/0.25),sJerk=acc<1.5?1:Math.max(0,1-(acc-1.5)/3),sDrag=1-Math.min(1,Math.max(0,(frac-0.35)/0.45)),sHold=F.v.x<=us*1.02?1:0.3;
+    const sSpeed=Math.max(0,1-Math.abs(b.v.x-w.x)/0.3),sVert=Math.max(0,1-Math.abs(b.v.y)/0.25),sJerk=acc<1.5?1:Math.max(0,1-(acc-1.5)/3),sDrag=1-Math.min(1,Math.max(0,(frac-0.35)/0.45)),sHold=eu?euroHold:(F.v.x<=us*1.02?1:0.3);
     for(const f of fishNear(b,1.2)){const S=SPECIES[f.sp];const d=Math.hypot(b.p.x-f.x,b.p.y-f.y,b.p.z-f.z);
       const sWin=d<S.win?1:Math.max(0,1-(d-S.win)/0.3);
       const sH=off>=S.band[0]&&off<=S.band[1]?1:Math.max(0,1-Math.min(Math.abs(off-S.band[0]),Math.abs(off-S.band[1]))/0.25);
-      const sLead=S.bottom?Math.max(0,Math.min(1,(lead+0.25)/0.4)):0.8+0.2*Math.max(0,Math.min(1,(lead+0.5)/0.5));
+      const sLead=eu?sGuide:(S.bottom?Math.max(0,Math.min(1,(lead+0.25)/0.4)):0.8+0.2*Math.max(0,Math.min(1,(lead+0.5)/0.5)));
       const sBait=1,sAlert=Math.max(0,1-f.alert*1.4),sFeed=f.feeding?1:0.05;
       const sSpd=S.bottom?sSpeed:Math.max(sSpeed,Math.min(1,Math.abs(b.v.x-w.x)/0.4));  // 马口反而爱动的饵
       const detect=(P.mode==='euro'?0.92:0.62);const q=Math.pow(sWin*sH*sLead*sSpd*sVert*sJerk*sDrag*sBait*sAlert*sFeed*sHold,0.4)*detect;
-      const rec={f,b,q,sub:{窗口:sWin,离底:sH,领先:sLead,同速:sSpd,垂直:sVert,顿挫:sJerk,拖底:sDrag,警觉:sAlert,开口:sFeed,压线:sHold},d,off,lead,ws:w.x,bv:b.v.x};
+      const rec={f,b,q,sub:{窗口:sWin,离底:sH,[eu?'竿尖 lead':'领先']:sLead,同速:sSpd,垂直:sVert,顿挫:sJerk,拖底:sDrag,警觉:sAlert,开口:sFeed,[eu?'主线状态':'压线']:sHold},d,off,lead,ws:w.x,bv:b.v.x};
       if(!best||q>best.q)best=rec;
       if(q>0.5){f.p+=S.aggr*(q-0.5)/0.5*1.8*dt;if(Math.random()<f.p*dt*3.5){doBite(rec);return;}}else f.p=Math.max(0,f.p-dt);
     }
   }
   // 无鱼参照：末饵按白甲取食带评分，供学习/演示
-  if(!best&&baits.length){const b=baits[baits.length-1];const w=waterVel(b.p.x,b.p.y,b.p.z,simT);const off=b.p.y-bed(b.p.x,b.p.z)-b.r;const lead=b.p.x-F.p.x;
+  if(!best&&baits.length){const b=baits[baits.length-1];const w=waterVel(b.p.x,b.p.y,b.p.z,simT);const off=b.p.y-bed(b.p.x,b.p.z)-b.r;const lead=eu?rodTip.x-b.p.x:b.p.x-F.p.x;
     const h=baitHist.get(b)||[];const frac=h.length?h.reduce((a,c)=>a+c,0)/h.length:0;const S=SPECIES.baijia;
-    const sSpeed=Math.max(0,1-Math.abs(b.v.x-w.x)/0.3),sVert=Math.max(0,1-Math.abs(b.v.y)/0.25),sDrag=1-Math.min(1,Math.max(0,(frac-0.35)/0.45)),sHold=F.v.x<=us*1.02?1:0.3;
-    const sH=off>=S.band[0]&&off<=S.band[1]?1:Math.max(0,1-Math.min(Math.abs(off-S.band[0]),Math.abs(off-S.band[1]))/0.25);const sLead=Math.max(0,Math.min(1,(lead+0.25)/0.4));
-    best={f:null,b,q:Math.pow(sH*sLead*sSpeed*sVert*sDrag*sHold,0.4),sub:{离底:sH,领先:sLead,同速:sSpeed,垂直:sVert,拖底:sDrag,压线:sHold},d:0,off,lead,ws:w.x,bv:b.v.x,ref:true};}
+    const sSpeed=Math.max(0,1-Math.abs(b.v.x-w.x)/0.3),sVert=Math.max(0,1-Math.abs(b.v.y)/0.25),sDrag=1-Math.min(1,Math.max(0,(frac-0.35)/0.45)),sHold=eu?euroHold:(F.v.x<=us*1.02?1:0.3);
+    const sH=off>=S.band[0]&&off<=S.band[1]?1:Math.max(0,1-Math.min(Math.abs(off-S.band[0]),Math.abs(off-S.band[1]))/0.25);const sLead=eu?sGuide:Math.max(0,Math.min(1,(lead+0.25)/0.4));
+    best={f:null,b,q:Math.pow(sH*sLead*sSpeed*sVert*sDrag*sHold,0.4),sub:{离底:sH,[eu?'竿尖 lead':'领先']:sLead,同速:sSpeed,垂直:sVert,拖底:sDrag,[eu?'主线状态':'压线']:sHold},d:0,off,lead,ws:w.x,bv:b.v.x,ref:true};}
   if(P.mode==='euro'&&best){const reach=Math.abs(M.p.x-rodTip.x)+ERIG.rodLen;if(reach>6){const f=Math.max(0.15,1-(reach-6)/4);best.q*=f;best.sub['射程']=f;}}
   lastQ=best;
 }
 /* ===== 完美演示：自动调 holding back ===== */
 let AUTO=false,autoHb=0.45;const AS={sp:0,lead:0,off:0,frac:0,init:false,msg:'',highT:0};
+function resetEuroAutoState(){Object.assign(AS,{euInit:false,runX:0,segment:0,touchCount:0,lastTouchX:-1e9,noTouchUntilX:-1e9,contactPrev:false,touchCool:0,liftBurst:0,stall:0,tSince:0,tr:[],msg:''});}
 function autoLead(dt){
   if(!AUTO||P.mode!=='euro'||(phase!=='drift'&&phase!=='sink'))return;
-  const off=M.p.y-bed(M.p.x,M.p.z)-M.r;const T=EURO?EURO.tension:0;
-  // 目标：leader 微绷（张力 0.004–0.012），蝇离底 5–15cm
-  const depth=-bed(M.p.x,M.p.z);
-  // ① leader 长度自适应：刚好够用（水深+竿高+少量余量）。太短到不了底，太长则多余的线被水冲成弧、把蝇托住
-  const vGap=depth+P.rodH;                                    // 竿尖到底的垂直落差
-  const hGap=Math.max(0.15,rodTip.x-M.p.x);                    // 当前水平超前量
-  const needLen=Math.hypot(vGap,hGap)+0.08;                    // 紧线钓法：leader 只比直线距长 8cm
-  if(AS.cool<=0&&Math.abs(ERIG.leaderLen-needLen)>0.15){
-    const old=ERIG.leaderLen;
-    ERIG.leaderLen=Math.max(1.2,Math.min(4.5,old+(needLen-old)*Math.min(1,dt*0.7)));
-    const k=ERIG.leaderLen/old;
-    for(const c of cons){if(c.a.type==='leader'&&c.b.type!=='bait')c.d*=k;else if(c.a.type==='leader'&&c.b.type==='bait'&&c.b===M)c.d*=k;}
-    if($('ll')){$('ll').value=Math.round(ERIG.leaderLen*100);$('vLL').textContent=Math.round(ERIG.leaderLen*100)+' cm';}
+  if(phase==='sink'&&EURO&&(EURO.landT||0)<1.50)return;                 // 先让松弛线组落水，1.5s 绷紧完成后才启动自动控线
+  const C=euroControlFly(),off=C.p.y-bed(C.p.x,C.p.z)-C.r,T=EURO?EURO.tension:0,contactNow=!!(M.contact||J.contact);
+  // 每 5m 作为一个 dead-drift 单元，目标是 2–3 次短暂擦底，而不是持续贴底。
+  if(!AS.euInit){resetEuroAutoState();AS.euInit=true;AS.runX=C.p.x;AS.lastTouchX=C.p.x-2;}
+  const travel=Math.max(0,C.p.x-AS.runX),segment=Math.floor(travel/5),segDist=travel-segment*5;
+  if(segment!==AS.segment){AS.segment=segment;AS.touchCount=0;AS.lastTouchX=C.p.x-2;AS.noTouchUntilX=-1e9;AS.contactPrev=contactNow;AS.touchCool=0;AS.liftBurst=0;AS.tr=[];}
+  AS.touchCool=Math.max(0,AS.touchCool-dt);AS.liftBurst=Math.max(0,AS.liftBurst-dt);
+  const freshTouch=contactNow&&!AS.contactPrev&&AS.touchCool<=0&&C.p.x-AS.lastTouchX>1.10;
+  if(freshTouch){AS.touchCount=Math.min(3,AS.touchCount+1);AS.lastTouchX=C.p.x;AS.noTouchUntilX=C.p.x+1.35;AS.touchCool=0.90;AS.liftBurst=1.0;}
+  AS.contactPrev=contactNow;
+
+  // 5m 内两个主要找底窗口，末段保留一个很短的第三窗口；实际通常是 2 次，河床刚好抬高时才会有第 3 次。
+  const touchSlots=[0.75,2.85,4.65],nextTouchAt=touchSlots[AS.touchCount]??99;
+  const seekBottom=AS.touchCount<3&&segDist>=nextTouchAt&&C.p.x>=AS.noTouchUntilX&&AS.liftBurst<=0;
+  const targetOff=AS.liftBurst>0?0.16:seekBottom?0.025:0.13;
+
+  // 只在“刚擦到”的一帧给很小的上提脉冲，后续高度全由竿尖控制，不再直接托着蝇跑。
+  if(freshTouch){
+    for(const n of nodes){if(n.type!=='bait'||!n.contact)continue;n.p.y+=Math.min(0.008,dt*0.25);n.v.y=Math.max(n.v.y,0.30);}
   }
-  // ② 竿尖高度跟随水深：深水压低竿尖（争取垂直落差），浅水抬高
-  const hTarget=Math.max(0.3,Math.min(2.0,1.9-depth*0.55));
-  AS.stall=(Math.abs(M.v.x)<0.03&&M.contact)?(AS.stall||0)+dt:0;
-  let dh=(hTarget-P.rodH)*0.6;
-  if(AS.stall>1.2)dh+=1.8;   // 蝇卡住 → 抬竿解脱（真实钓手动作）
-  if(T<0.86)dh+=0.50;                                          // 太松 → 抬竿收紧
-  if(T>0.94)dh-=0.60;                                          // 太绷 → 压竿放松
-  if(off<0.02)dh+=0.30;                                        // 贴死底 → 抬一点
-  P.rodH=Math.max(0.3,Math.min(2.0,P.rodH+dh*dt*0.7));
-  // ③ lead 管深度：竿尖越超前 leader 越斜 → 蝇越高
-  // ④ 重蝇克数自适应：lead 已放到最小、leader 也够长，蝇仍沉不到取食带 → 换更重的蝇（真实钓手的做法）
-  AS.cool=Math.max(0,(AS.cool||0)-dt);   // 换蝇冷却：换完要等蝇重新沉到位再评估
-  // 滑动窗口触底率（约 6 s）：<12% 说明蝇不够重，>55% 说明太重在犁底
+
+  const depth=-bed(C.p.x,C.p.z);
+  // leader 长度和蝇重属于用户选定的线组配置，自动控线绝不修改。
+  // ① 用完整线长、当前水平 lead、水深和目标离底高度反算竿尖高度。
+  const mainLen=ERIG.leaderLen,hGap=Math.max(0.05,Math.abs(rodTip.x-C.p.x)),usable=Math.max(0.40,mainLen-0.045);
+  const vSpan=Math.sqrt(Math.max(0.01,usable*usable-Math.min(hGap,usable-0.01)**2));
+  const hTarget=Math.max(0.3,Math.min(2.0,vSpan-depth+targetOff));
+  AS.stall=(Math.abs(C.v.x)<0.03&&contactNow)?(AS.stall||0)+dt:0;
+  let dh=(hTarget-P.rodH)*(AS.liftBurst>0?4.2:2.2);
+  if(contactNow)dh+=0.90;
+  if(AS.stall>0.35)dh+=1.35;
+  if(T<0.84)dh+=0.25;
+  if(T>0.98)dh-=0.45;
+  P.rodH=Math.max(0.3,Math.min(2.0,P.rodH+dh*dt));
+
+  // ② lead 只做水平速度微调，离底高度主要交给 rodH。
   AS.tr=(AS.tr||[]);AS.tr.push((M.contact||J.contact)?1:0);if(AS.tr.length>360)AS.tr.shift();
   const trRate=AS.tr.length>120?AS.tr.reduce((a,b)=>a+b,0)/AS.tr.length:0.25;
-  if(P.lead<=0.90&&trRate<0.12){AS.needHeavy=(AS.needHeavy||0)+dt;}else AS.needHeavy=0;
-  if(trRate>0.55){AS.needLight=(AS.needLight||0)+dt;}else AS.needLight=0;
-  const applyHeavy=()=>{const hn=nodes.find(n=>n.type==='bait'&&n.bt==='tung'&&n.w>0.14);
-    if(hn){const mb=ERIG.heavy/1000,mh=1.0e-4;hn.m=mb+mh;hn.w=ERIG.heavy;
-      hn.r=Math.max(0.0022,radiusOf(mb,MAT.tung.rho)*1.15);
-      hn.wf=(mb*(1-1/19.3)+mh*(1-1/7.8))/(mb+mh);}
-    if($('hw')){$('hw').value=ERIG.heavy.toFixed(2);$('vHW').textContent=ERIG.heavy.toFixed(2)+' g';}
-    if(typeof updateSummary==='function')updateSummary();
-    if(typeof buildGauge==='function'){gaugeSig='';buildGauge();}};
-  if(AS.cool<=0&&AS.needHeavy>2.5&&ERIG.heavy<1.5){ERIG.heavy=Math.min(1.5,ERIG.heavy*1.3);AS.needHeavy=0;AS.cool=6;applyHeavy();}
-  if(AS.cool<=0&&AS.needLight>6&&ERIG.heavy>0.15){ERIG.heavy=Math.max(0.15,ERIG.heavy*0.82);AS.needLight=0;AS.cool=6;applyHeavy();}
-  AS.tSince=(M.contact||J.contact)?0:(AS.tSince||0)+dt;
-  const targetOff=(AS.tSince>1.0)?-0.03:0.025;  // 目标贴底：超 1 s 未触底就压到底面下；刚触过抬到 2.5cm，形成间歇擦底                  // 超 2 s 没触底 → 目标降到近底找底；刚触过 → 回到 9cm，形成间歇
   const err=targetOff-off;
-  let d=(Math.abs(err)<0.02)?0:err*1.5;
+  let d=(Math.abs(err)<0.015)?0:err*(AS.liftBurst>0?2.2:0.9);
+  if(contactNow)d+=0.18;
+  if(AS.liftBurst>0)d+=0.08;
   if(T<0.80)d-=0.06;
-  P.lead=Math.max(0.75,Math.min(1.30,P.lead+d*dt*0.7));        // 增益减半，平滑逼近
-  $('lead').value=Math.round(P.lead*100);$('vLead').textContent=P.lead.toFixed(2)+'×';
-    $('rodH').value=P.rodH.toFixed(1);$('vRodH').textContent=P.rodH.toFixed(1)+' m';
-  AS.msg=(AS.stuckLow>4)?`蝇沉不下去（离底 ${(off*100).toFixed(0)}cm）· 建议重蝇 ≥${(ERIG.heavy*1.6).toFixed(1)}g`:(AS.stuckHigh>4)?'蝇一直拖底 · 建议减轻重蝇':(T<0.84?'leader 松弛':T>0.92?'张力偏大':'微绷 · dead drift');
+  P.lead=Math.max(0.75,Math.min(1.30,P.lead+d*dt*0.9));
+  AS.msg=AS.liftBurst>0?`第 ${AS.touchCount} 次擦底 · 抬竿`:(seekBottom?`找底窗口 · ${AS.touchCount}/3`:`离底漂流 · ${AS.touchCount}/3`);
+  $('lead').value=Math.round(P.lead*100);$('vLead').textContent=P.lead.toFixed(2)+'× · '+AS.msg;
+  $('rodH').value=P.rodH.toFixed(1);$('vRodH').textContent=P.rodH.toFixed(1)+' m';
 }
 function autoTune(dt){
   if(P.mode==='euro')return autoLead(dt);
@@ -728,7 +885,10 @@ function autoTune(dt){
   P.hb=autoHb;$('hb').value=Math.round(P.hb*100);$('vHb').textContent=Math.round(P.hb*100)+'%'+(AS.msg?' · '+AS.msg:'');
 }
 let bitePending=null;
-function doBite(rec){biteInfo=rec;phase='bite';paused=true;setPhase();rec.snap=nodes.chain.filter(n=>n.type!=='floattop').map(n=>({type:n.type,bt:n.bt,w:n.w,x:n.p.x,y:n.p.y,off:n.p.y-bed(n.p.x,n.p.z)-n.r,vx:n.v.x,ws:n.p.y<0?waterVel(n.p.x,n.p.y,n.p.z,simT).x:0,contact:n.contact}));rec.hb=P.hb;rec.tilt=floatTilt();rec.floatOut=Math.max(0,FT.p.y);bitePending=rec;}
+function doBite(rec){biteInfo=rec;phase='bite';paused=true;setPhase();rec.mode=P.mode;
+  const snapNodes=P.mode==='euro'?nodes.filter(n=>n.type==='bait'):nodes.chain.filter(n=>n.type!=='floattop');
+  rec.snap=snapNodes.map(n=>({type:n.type,bt:n.bt,w:n.w,x:n.p.x,y:n.p.y,off:n.p.y-bed(n.p.x,n.p.z)-n.r,vx:n.v.x,ws:n.p.y<0?waterVel(n.p.x,n.p.y,n.p.z,simT).x:0,contact:n.contact}));
+  rec.refX=P.mode==='euro'?rodTip.x:F.p.x;rec.hb=P.hb;rec.leadRate=P.lead;rec.tension=EURO?EURO.tension:0;rec.belly=EURO?EURO.slack:0;rec.tilt=floatTilt();rec.floatOut=Math.max(0,FT.p.y);bitePending=rec;}
 
 /* ================= 渲染 ================= */
 const scene=new THREE.Scene();function makeSky(){const faces=[];const mk=(fn)=>{const c=document.createElement('canvas');c.width=c.height=256;const g=c.getContext('2d');fn(g);return c;};
@@ -890,10 +1050,36 @@ function updateTubes(){
       const cl=[];for(const p of pts){if(!isFinite(p.x)||!isFinite(p.y)||!isFinite(p.z))continue;if(cl.length&&cl[cl.length-1].distanceTo(p)<1e-4)continue;cl.push(p);}
       if(cl.length<2)return null;
       const curve=new THREE.CatmullRomCurve3(cl,false,'centripetal',0.2);const m=new THREE.Mesh(new THREE.TubeGeometry(curve,Math.max(8,cl.length*5),rad,6,false),mat);scene.add(m);return m;};
-    const sn=Math.max(1,Math.round(ch.length*0.28));
-    tubeMain=mk([rodTip.clone(),...ch.slice(0,sn).map(n=>n.p.clone())],0.0011*VS,tubeMat,tubeMain);   // sighter 段（醒目）
-    tubeSub=mk(ch.slice(sn-1).map(n=>n.p.clone()),0.0006*VS,subMat,tubeSub);
-    if(nodes.tagAtNode&&nodes.tag.length)tubeTag=mk([nodes.tagAtNode.p.clone(),...nodes.tag.map(n=>n.p.clone())],0.0006*VS,subMat,tubeTag);
+    // 落水时显示真实松弛节点；前 0.4s 保持松弛，再用 1.1s 逐步融合为竿尖—末蝇的单一微弯斜线。
+    const C=euroControlFly(),endI=Math.max(1,ch.indexOf(C)),a=rodTip.clone(),b=C.p.clone(),belly=euroBellyAmount(a,b),tighten=euroTightenProgress();
+    const count=Math.max(32,(endI+1)*4),raw=[a,...ch.slice(0,endI+1).map(n=>n.p.clone())],clean=[];
+    for(const p of raw)if(!clean.length||clean[clean.length-1].distanceTo(p)>=1e-4)clean.push(p);
+    const rawPts=clean.length>=2?new THREE.CatmullRomCurve3(clean,false,'centripetal',0.2).getPoints(count):null,smooth=[];
+    for(let i=0;i<=count;i++){const t=i/count,arc=4*t*(1-t),ideal=new THREE.Vector3(
+      a.x+(b.x-a.x)*t+belly*arc,
+      a.y+(b.y-a.y)*t,
+      a.z+(b.z-a.z)*t);smooth.push(rawPts?rawPts[i].clone().lerp(ideal,tighten):ideal);}
+    const sn=Math.max(2,Math.round((smooth.length-1)*0.28)),fullSmooth=[...smooth];
+    if(ERIG.topo==='heavyTag'&&M!==C){
+      const tailRaw=[b,...ch.slice(endI+1).map(n=>n.p.clone())],tailClean=[];
+      for(const p of tailRaw)if(!tailClean.length||tailClean[tailClean.length-1].distanceTo(p)>=1e-4)tailClean.push(p);
+      const tailLoose=tailClean.length>=2?new THREE.CatmullRomCurve3(tailClean,false,'centripetal',0.2).getPoints(16):null,tailEnd=M.p.clone();
+      for(let i=1;i<=16;i++){const t=i/16,arc=4*t*(1-t),ideal=new THREE.Vector3(b.x+(tailEnd.x-b.x)*t+0.003*arc,b.y+(tailEnd.y-b.y)*t,b.z+(tailEnd.z-b.z)*t);
+        fullSmooth.push(tailLoose?tailLoose[i].clone().lerp(ideal,tighten):ideal);}
+    }
+    tubeSub=mk(fullSmooth,0.0006*VS,subMat,tubeSub);                     // 主 leader + 上重下轻的自由尾段
+    tubeMain=mk(smooth.slice(0,sn+1),0.0011*VS,tubeMat,tubeMain);        // 黄色段直接沿整体斜线
+    if(nodes.tagAtNode&&nodes.tag.length){
+      const ti=Math.max(0,ch.indexOf(nodes.tagAtNode)),root=smooth[Math.round(ti/Math.max(1,endI)*(smooth.length-1))],tip=nodes.tag[nodes.tag.length-1].p;
+      const tagPts=[],tagBelly=Math.min(0.003,ERIG.tagLen*0.02),tagRaw=[root.clone(),...nodes.tag.map(n=>n.p.clone())],tagClean=[];
+      for(const p of tagRaw)if(!tagClean.length||tagClean[tagClean.length-1].distanceTo(p)>=1e-4)tagClean.push(p);
+      const tagLoose=tagClean.length>=2?new THREE.CatmullRomCurve3(tagClean,false,'centripetal',0.2).getPoints(12):null;
+      for(let i=0;i<=12;i++){const t=i/12,arc=4*t*(1-t),ideal=new THREE.Vector3(
+        root.x+(tip.x-root.x)*t+tagBelly*arc,
+        root.y+(tip.y-root.y)*t,
+        root.z+(tip.z-root.z)*t);tagPts.push(tagLoose?tagLoose[i].clone().lerp(ideal,tighten):ideal);}
+      tubeTag=mk(tagPts,0.0006*VS,subMat,tubeTag);
+    }
     else if(tubeTag){scene.remove(tubeTag);tubeTag=null;}
     return;}
   if(tubeTag){scene.remove(tubeTag);tubeTag.geometry.dispose();tubeTag=null;}
@@ -995,15 +1181,15 @@ function mk(el,n,b,h){const fr=Math.min(1,Math.max(0,(n.p.y-b)/h));el.style.top=
 function frText(id,n,name){const el=$(id);if(n.contact){el.textContent=name+(n.onRock?' · 蹭石':' · 擦底')+' μ'+n.mu.toFixed(2);el.classList.add('on');}else{el.textContent=name+' · 无接触';el.classList.remove('on');}}
 const muName=m=>m<0.3?'低':m<0.55?'中':'高';
 const tipH=[];let tipEvt='';let tipEvtT=0;
-function updateTip(dt){if(P.mode==='euro'){const T=EURO?EURO.tension:0;tipH.push(Math.max(-0.02,Math.min(0.08,(T-0.6)*0.2)));while(tipH.length>360)tipH.shift();
-  let d2='';const n2=tipH.length;for(let i=0;i<n2;i++){const x=220-(n2-i)*(220/360);const y=30-Math.min(1,Math.max(0,(tipH[i]+0.02)/0.08))*28;d2+=(i?'L':'M')+x.toFixed(1)+' '+y.toFixed(1)+' ';}
-  $('tipHist').innerHTML=`<path d="${d2}" fill="none" stroke="#F0632A" stroke-width="1.8"/>`;$('tipNow').textContent=(T*100).toFixed(0)+'%';return;}
+function updateTip(dt){if(P.mode==='euro'){const belly=EURO?EURO.slack:0;tipH.push(Math.max(0,Math.min(0.15,belly)));while(tipH.length>360)tipH.shift();
+  let d2='';const n2=tipH.length;for(let i=0;i<n2;i++){const x=220-(n2-i)*(220/360);const y=30-Math.min(1,tipH[i]/0.15)*28;d2+=(i?'L':'M')+x.toFixed(1)+' '+y.toFixed(1)+' ';}
+  $('tipHist').innerHTML=`<path d="${d2}" fill="none" stroke="#F0632A" stroke-width="1.8"/>`;$('tipNow').textContent=(belly*100).toFixed(0)+' cm';return;}
   const out=Math.max(-0.02,FT.p.y);tipH.push(out);while(tipH.length>360)tipH.shift();
   if(tipH.length>20){const a=tipH[tipH.length-20],b=tipH[tipH.length-1];if(a-b>0.008&&simT-tipEvtT>0.5){tipEvt=(nodes.some(n=>n.contact&&(n.type==='shot'||n.type==='bait'))?'擦底顿口':'漂尖下沉');tipEvtT=simT;}}
   let d='';const n=tipH.length;for(let i=0;i<n;i++){const x=220-(n-i)*(220/360);const y=30-Math.min(1,Math.max(0,(tipH[i]+0.02)/0.08))*28;d+=(i?'L':'M')+x.toFixed(1)+' '+y.toFixed(1)+' ';}
   const wl=30-(0.02/0.08)*28;
   $('tipHist').innerHTML=`<line x1="0" y1="${wl}" x2="220" y2="${wl}" stroke="#2A8CA0" stroke-width="1" stroke-dasharray="3 3"/><path d="${d}" fill="none" stroke="#F0632A" stroke-width="1.8"/>`+(simT-tipEvtT<1.2?`<text x="4" y="11" font-size="10" fill="#b23a2f" font-weight="600">${tipEvt}</text>`:'');
-  $('tipLbl').textContent=P.mode==='euro'?'leader 张力（最近 6 s）':'漂尖露出（最近 6 s）';$('tipNow').textContent=FT.p.y<-0.01?'沉没':(out*100).toFixed(1)+' cm';}
+  $('tipLbl').textContent='漂尖露出（最近 6 s）';$('tipNow').textContent=FT.p.y<-0.01?'沉没':(out*100).toFixed(1)+' cm';}
 let gaugeEls=[];let gaugeBuilt=false;
 function rigSignature(){return P.mode+'|'+nodes.filter(n=>n.type==='shot'||n.type==='bait'||n.type==='swivel').map(n=>n.type+(n.bt||'')+(n.w||0)).join(',');}
 let gaugeSig='';
@@ -1011,7 +1197,7 @@ function buildGauge(){
   const sig=rigSignature();if(sig===gaugeSig&&gaugeEls.length)return;gaugeSig=sig;
   if(P.mode==='euro'){
     const rows=$('rowsDyn'),mk2=$('mkDyn'),fr=$('frDyn');rows.innerHTML='';mk2.innerHTML='';fr.innerHTML='';gaugeEls=[];
-    const rt=document.createElement('div');rt.className='row';rt.innerHTML='<i style="background:var(--float)"></i><span>leader 张力</span><b id="rF">—</b>';rows.appendChild(rt);
+    const rt=document.createElement('div');rt.className='row';rt.innerHTML='<i style="background:var(--float)"></i><span>线组状态</span><b id="rF">—</b>';rows.appendChild(rt);
     const baits=nodes.filter(n=>n.type==='bait');
     const hb2=ERIG.topo==='heavyBottom';const nm=n=>(n===M?(hb2?'末端重蝇 ':'末端轻蝇 '):(hb2?'T型节轻蝇 ':'上方重蝇 '))+(n.w?n.w.toFixed(2)+'g':'');
     baits.forEach(n=>{const col=n.bt==='tung'?'var(--tung)':'#8a7a4a';
@@ -1041,13 +1227,14 @@ function updateGauge(){
   const refX=(P.mode==='euro')?M.p.x:F.p.x;
   const b=bed(refX,0),h=-b;$('gDepth').textContent=`此处水深 ${h.toFixed(2)} m`;
   if(P.mode==='cp')mk($('mkF'),F,b,h);else $('mkF').style.display='none';
-  if(P.mode==='euro'){const T=EURO?EURO.tension:0;const st=T<0.84?'松弛':T>0.92?'张力大':'微绷 ✓';
-    $('rF').textContent=st+' '+(T*100).toFixed(0)+'%';$('euState').textContent=st;
-    $('kTilt').textContent=(rodTip.x-M.p.x>=0?'竿尖在蝇上游 ':'竿尖在蝇下游 ')+Math.abs(rodTip.x-M.p.x).toFixed(2)+' m';
+  if(P.mode==='euro'){const belly=EURO?EURO.slack:0,leadDown=rodTip.x>=M.p.x;const curve=belly<0.025?'偏紧':belly>0.15?'belly 偏大':'微 belly';
+    $('rF').textContent=(leadDown?'下游 lead':'跟随')+' · '+(belly*100).toFixed(0)+'cm';$('euState').textContent=(leadDown?'整体 lead':'尚未 lead')+' · '+curve;
+    // 水流沿 +x：竿尖 x 更大时位于蝇的下游，也就是正在 lead 蝇。
+    $('kTilt').textContent=(rodTip.x-M.p.x>=0?'竿尖在蝇下游 · lead ':'竿尖在蝇上游 · 跟随 ')+Math.abs(rodTip.x-M.p.x).toFixed(2)+' m';
     $('kPay').textContent=(waterVel(M.p.x,Math.min(-0.01,M.p.y),0,simT).x*P.lead).toFixed(2)+' m/s';
-    if($('rDrift')){const reach=Math.max(0.4,Math.sqrt(Math.max(0.04,ERIG.leaderLen*ERIG.leaderLen-(P.rodH+0.3)*(P.rodH+0.3))));const R=ERIG.rodLen*0.52+reach*0.65;
+    if($('rDrift')){const mainLen=euroMainLen(),reach=Math.max(0.4,Math.sqrt(Math.max(0.04,mainLen*mainLen-(P.rodH+0.3)*(P.rodH+0.3))));const R=ERIG.rodLen*0.52+reach*0.65;
       const done=Math.max(0,M.p.x-(STAND-R*2.0)),tot=R*3.0;
-      if(WALK)$('rDrift').textContent='跟走中 '+M.p.x.toFixed(1)+' m';
+      if(WALK){const base=EURO.downX===null?EURO.walkStart:EURO.downX;const dist=(EURO.walkOffset||0)+Math.max(0,M.p.x-base);$('rDrift').textContent='一直飘 '+dist.toFixed(1)+' m';}
       else if(EURO&&EURO.downX!==null){const d2=Math.max(0,M.p.x-EURO.downX);$('rDrift').textContent='到底后 '+d2.toFixed(1)+' / 5.0 m'+(phase==='over'?' · 到头':'');}
       else $('rDrift').textContent='下沉中 '+done.toFixed(1)+' m';}}
   else $('rF').textContent=F.p.y>0.02?'空中':(FT.p.y<-0.01?'⚠ 被拖沉 '+(-FT.p.y*100).toFixed(0)+'cm（承重不足）':'露出 '+(Math.max(0,FT.p.y)*100).toFixed(0)+'cm');
@@ -1062,11 +1249,11 @@ function updateGauge(){
   if(P.mode==='cp')$('kPay').textContent=payRate.toFixed(2)+' m/s';
   $('tiltLbl').textContent=(P.mode==='euro')?'竿尖相对蝇':'浮漂倾角';
   $('payLbl').textContent=(P.mode==='euro')?'竿尖速度':'放线速率';
-  $('tipLbl').textContent=(P.mode==='euro')?'leader 张力（最近 6 s）':'漂尖露出（最近 6 s）';
+  $('tipLbl').textContent=(P.mode==='euro')?'leader belly（最近 6 s）':'漂尖露出（最近 6 s）';
   const zn=zoneAt(M.p.x);$('kSub').textContent=`${['沙','砾石','卵石','大石','基岩','碎石'][zn.t]} / ${muName(zn.mu)} ${zn.mu}`;$('zName').textContent=zn.name;
   if(Math.floor(simT*4)!==Math.floor((simT-1/60)*4))drawProfile(refX);
   const qb=$('qbox');if(FISH_ON&&lastQ){qb.style.display='';$('qTot').textContent=(lastQ.q*100).toFixed(0)+(lastQ.ref?'  · 参照白甲':'  · '+SPECIES[lastQ.f.sp].name+' '+lastQ.d.toFixed(2)+'m');
-    $('qSub').innerHTML=Object.entries(lastQ.sub).map(([k,v])=>`<span style="color:${v>0.8?'#2b7a3e':v>0.4?'#9a6a12':'#b23a2f'}">${k} ${(v*100).toFixed(0)}</span>`).join('');}else qb.style.display='none';
+    $('qSub').innerHTML=Object.entries(lastQ.sub).map(([k,v])=>{const label=P.mode==='euro'&&k==='压线'?'竿尖引导':k;return `<span style="color:${v>0.8?'#2b7a3e':v>0.4?'#9a6a12':'#b23a2f'}">${label} ${(v*100).toFixed(0)}</span>`;}).join('');}else qb.style.display='none';
 }
 
 /* 主循环 */
@@ -1123,8 +1310,11 @@ const label={depth:'vDepth',flow:'vFlow',hb:'vHb',cap:'vCap'};
 for(const k of Object.keys(label)){$(k).addEventListener('input',e=>{const v=+e.target.value;$(label[k]).textContent=fmt[k](v);if(k==='hb')P.hb=v/100;else P[k]=v;if(k==='depth'){buildBed();buildRig();}else if(k!=='flow'&&k!=='hb')buildRig();});}
 $('bCast').onclick=()=>{buildRig();camX=1.2;};
 $('bHere').onclick=()=>buildRig(P.mode==='euro'?STAND:F.p.x);
-$('bWalk').onclick=()=>{WALK=!WALK;$('bWalk').classList.toggle('on',WALK);if(WALK&&phase==='over')phase='drift';};
-$('bStep').onclick=()=>{const reach=Math.max(0.4,Math.sqrt(Math.max(0.04,ERIG.leaderLen*ERIG.leaderLen-(P.rodH+0.3)*(P.rodH+0.3))));const R=ERIG.rodLen*0.52+reach*0.65;buildRig(STAND+R*1.2);};
+$('bWalk').onclick=()=>setEuroWalk(!WALK);
+$('driftContinue').onclick=()=>setEuroWalk(true);
+$('driftStop').onclick=()=>{$('driftEndWrap').style.display='none';};
+$('driftEndWrap').addEventListener('click',e=>{if(e.target===$('driftEndWrap'))$('driftEndWrap').style.display='none';});
+$('bStep').onclick=()=>{const mainLen=euroMainLen(),reach=Math.max(0.4,Math.sqrt(Math.max(0.04,mainLen*mainLen-(P.rodH+0.3)*(P.rodH+0.3))));const R=ERIG.rodLen*0.52+reach*0.65;buildRig(STAND+R*1.2);};
 $('bPause').onclick=()=>{paused=!paused;$('bPause').textContent=paused?'继续':'暂停';$('bPause').classList.toggle('on',paused);};
 $('bFollow').onclick=()=>{follow=!follow;$('bFollow').classList.toggle('on',follow);};
 $('bArrows').onclick=()=>{showParticles=!showParticles;$('bArrows').classList.toggle('on',showParticles);};$('bArrows').classList.add('on');
@@ -1184,16 +1374,21 @@ function setMode(m){P.mode=m;const cp=m==='cp';
   $('mCP').classList.toggle('on',cp);$('mCP').classList.toggle('ghost',!cp);
   $('mEU').classList.toggle('on',!cp);$('mEU').classList.toggle('ghost',cp);
   $('cpPanel').style.display=cp?'':'none';$('euPanel').style.display=cp?'none':'';
-  $('titleH').textContent=cp?'Centerpin 线组 · 河流物理模拟':'Euro nymph 线组 · 河流物理模拟';
+  $('titleH').textContent=cp?'Centerpin · 河流物理模拟':'Euro nymph · 河流物理模拟';
+  document.title=(cp?'Centerpin':'Euro nymph')+' · 河流物理模拟 v77';
+  $('viewHint').textContent=cp?'镜头垂直于流向，跟随浮漂。拖动旋转，滚轮或双指缩放。':'镜头垂直于流向，跟随末蝇。拖动旋转，滚轮或双指缩放。';
+  $('depthHint').textContent=cp?'（DIY 后 = 漂→最下铅）':'（水面 → 河床）';
+  $('biteNote').textContent=cp?'只有当饵与所在层水流同速、领先浮漂、在鱼的取食层、没有死拖底、没惊到鱼、鱼正开口时，才会咬钩。':'只有当蝇接近所在层水速、处在鱼的取食层、没有持续死拖底，并保持有效竿尖引导时，才会咬钩。';
+  WALK=false;$('bWalk').classList.remove('on');$('bWalk').textContent='跟着走';$('driftEndWrap').style.display='none';
   $('bDiy').style.display=cp?'':'none';$('capWrap').style.display=cp?'':'none';$('bStep').style.display=cp?'none':'';$('bWalk').style.display=cp?'none':'';
   if(!cp)STAND=0;
   $('bAuto').parentElement.style.display=cp?'':'none';
-  AUTO=false;$('bAuto').classList.remove('on');$('bAutoLead').classList.remove('on');
+  AUTO=!cp;$('bAuto').classList.remove('on');$('bAutoLead').classList.toggle('on',!cp);if(!cp)resetEuroAutoState();
   gaugeBuilt=false;buildBed();buildRig();camX=1.2;camY=cp?-0.5:-P.depth*0.5;tDist=cp?2.8:2.2;tPitch=cp?0.15:0.05;}
 $('mCP').onclick=()=>setMode('cp');$('mEU').onclick=()=>setMode('euro');
 $('lead').addEventListener('input',e=>{P.lead=+e.target.value/100;$('vLead').textContent=P.lead.toFixed(2)+'×';if(AUTO){AUTO=false;$('bAutoLead').classList.remove('on');}});
 $('rodH').addEventListener('input',e=>{P.rodH=+e.target.value;$('vRodH').textContent=P.rodH.toFixed(1)+' m';if(AUTO&&P.mode==='euro'){AUTO=false;$('bAutoLead').classList.remove('on');}});
-$('bAutoLead').onclick=()=>{AUTO=!AUTO;$('bAutoLead').classList.toggle('on',AUTO);};
+$('bAutoLead').onclick=()=>{AUTO=!AUTO;$('bAutoLead').classList.toggle('on',AUTO);if(AUTO)resetEuroAutoState();};
 document.querySelectorAll('.etopo').forEach(b=>b.onclick=()=>{ERIG.topo=b.dataset.t;document.querySelectorAll('.etopo').forEach(x=>x.classList.toggle('on',x===b));
   $('taLbl').innerHTML=(ERIG.topo==='heavyBottom'?'T 型节位置（末蝇上方）':'重蝇 → 轻蝇 距离')+'<b id="vTA">'+Math.round(ERIG.tagUp*100)+' cm</b>';
   $('tlWrap').style.display=ERIG.topo==='heavyBottom'?'':'none';buildRig();});
@@ -1208,16 +1403,19 @@ $('biteX').onclick=()=>{$('biteWrap').style.display='none';};
 $('biteWrap').addEventListener('click',e=>{if(e.target===$('biteWrap'))$('biteWrap').style.display='none';});
 $('biteSave').onclick=()=>{if(!biteInfo||!biteInfo.img)return;const a=document.createElement('a');a.href=biteInfo.img;a.download='中鱼快照.jpg';a.click();};
 $('biteStay').onclick=()=>{$('biteWrap').style.display='none';buildRig();camX=1.2;};
-function showBite(rec){const S=SPECIES[rec.f.sp];const kg=(rec.f.size**3*1.6e-5).toFixed(2);
+function showBite(rec){const S=SPECIES[rec.f.sp];const kg=(rec.f.size**3*1.6e-5).toFixed(2),eu=rec.mode==='euro';
   const nm=n=>n.type==='float'?'浮漂':n.type==='shot'?`铅 ${n.w}g`:n.type==='swivel'?'转环':n.type==='bait'?BAIT_DEF[n.bt].name+(n.bt==='tung'?' '+n.w+'g':''):'';
-  const snapRows=rec.snap.filter(n=>n.type!=='line').map(n=>`<tr><td>${nm(n)}</td><td>${n.type==='float'?(n.y>0.02?'空中':n.y<-0.1?'被压沉':'水面'):(n.off*100).toFixed(0)+' cm'+(n.contact?' 触底':'')}</td><td>${n.vx.toFixed(2)}</td><td>${n.type==='float'?'—':n.ws.toFixed(2)}</td><td>${(n.x-rec.snap[0].x>=0?'+':'')+((n.x-rec.snap[0].x)*100).toFixed(0)} cm</td></tr>`).join('');
+  const snapRows=rec.snap.filter(n=>eu?n.type==='bait':n.type!=='line').map(n=>`<tr><td>${nm(n)}</td><td>${n.type==='float'?(n.y>0.02?'空中':n.y<-0.1?'被压沉':'水面'):(n.off*100).toFixed(0)+' cm'+(n.contact?' 触底':'')}</td><td>${n.vx.toFixed(2)}</td><td>${n.type==='float'?'—':n.ws.toFixed(2)}</td><td>${(n.x-rec.refX>=0?'+':'')+((n.x-rec.refX)*100).toFixed(0)} cm</td></tr>`).join('');
   $('biteSnap').innerHTML=(rec.img?`<img src="${rec.img}" style="width:100%;border-radius:4px;display:block;margin-bottom:8px" alt="中鱼瞬间">`:'')+
-   `<table style="width:100%;font-size:11px;border-collapse:collapse"><tr style="color:var(--ink2)"><th align="left">元件</th><th align="left">离底</th><th align="left">速度 m/s</th><th align="left">该层水速</th><th align="left">相对浮漂</th></tr>${snapRows}</table>
-    <p style="font-size:11px;color:var(--ink2);margin-top:4px">holding back ${Math.round(rec.hb*100)}% · 底质 ${zoneAt(rec.b.p.x).name}</p>`;
-  const rows=Object.entries(rec.sub).map(([k,v])=>`<div style="display:flex;justify-content:space-between"><span>${k}</span><b style="color:${v>0.8?'#2b7a3e':'#9a6a12'}">${(v*100).toFixed(0)}</b></div>`).join('');
+   `<table style="width:100%;font-size:11px;border-collapse:collapse"><tr style="color:var(--ink2)"><th align="left">元件</th><th align="left">离底</th><th align="left">速度 m/s</th><th align="left">该层水速</th><th align="left">${eu?'相对竿尖':'相对浮漂'}</th></tr>${snapRows}</table>
+    <p style="font-size:11px;color:var(--ink2);margin-top:4px">${eu?`竿尖引导 ${rec.leadRate.toFixed(2)}× · leader belly ${(rec.belly*100).toFixed(0)}cm`:`holding back ${Math.round(rec.hb*100)}%`} · 底质 ${zoneAt(rec.b.p.x).name}</p>`;
+  const rows=Object.entries(rec.sub).map(([k,v])=>{const label=eu&&k==='压线'?'竿尖引导':k;return `<div style="display:flex;justify-content:space-between"><span>${label}</span><b style="color:${v>0.8?'#2b7a3e':'#9a6a12'}">${(v*100).toFixed(0)}</b></div>`;}).join('');
+  const modeLine=eu
+   ?`蝇速 ${rec.bv.toFixed(2)} vs 所在层水速 ${rec.ws.toFixed(2)} m/s · 竿尖引导 ${rec.leadRate.toFixed(2)}×<br>整条 leader 向下游 lead · belly ${(rec.belly*100).toFixed(0)}cm · ${zoneAt(rec.b.p.x).name} · 抛投后 ${simT.toFixed(1)} s`
+   :`饵速 ${rec.bv.toFixed(2)} vs 所在层水速 ${rec.ws.toFixed(2)} m/s · holding back ${Math.round(P.hb*100)}%<br>浮漂倾角 <b>${rec.tilt<0?'指上游':'指下游'} ${Math.abs(rec.tilt).toFixed(1)}°</b> · 漂尖露出 ${(rec.floatOut*100).toFixed(1)} cm · ${zoneAt(rec.b.p.x).name} · 抛投后 ${simT.toFixed(1)} s`;
   $('biteBody').innerHTML=`<p style="font-size:22px;font-weight:600;margin:4px 0">${S.name} · ${rec.f.size.toFixed(0)} cm · 约 ${kg} kg</p>
-   <p style="color:var(--ink2);font-size:12px;margin-bottom:10px">咬中：${BAIT_DEF[rec.b.bt].name}${rec.b.bt==='tung'?' '+rec.b.w+'g':''} · 离底 ${(rec.off*100).toFixed(0)} cm · 饵${rec.lead>=0?'领先':'落后'}浮漂 ${Math.abs(rec.lead*100).toFixed(0)} cm<br>
-   饵速 ${rec.bv.toFixed(2)} vs 所在层水速 ${rec.ws.toFixed(2)} m/s · holding back ${Math.round(P.hb*100)}%<br>浮漂倾角 <b>${rec.tilt<0?'指上游':'指下游'} ${Math.abs(rec.tilt).toFixed(1)}°</b> · 漂尖露出 ${(rec.floatOut*100).toFixed(1)} cm · ${zoneAt(rec.b.p.x).name} · 抛投后 ${simT.toFixed(1)} s</p>
+   <p style="color:var(--ink2);font-size:12px;margin-bottom:10px">咬中：${BAIT_DEF[rec.b.bt].name}${rec.b.bt==='tung'?' '+rec.b.w+'g':''} · 离底 ${(rec.off*100).toFixed(0)} cm · ${eu?('竿尖'+(rec.lead>=0?'领先蝇 ':'落后蝇 ')):('饵'+(rec.lead>=0?'领先浮漂 ':'落后浮漂 '))}${Math.abs(rec.lead*100).toFixed(0)} cm<br>
+   ${modeLine}</p>
    <div style="display:grid;grid-template-columns:1fr 1fr;gap:2px 18px;font-size:12px">${rows}</div>`;
   $('biteWrap').style.display='block';}
 $('bFlat').onclick=()=>{FLAT=!FLAT;$('bFlat').classList.toggle('on',FLAT);buildBed();buildRig(F?F.p.x:1.2);};
