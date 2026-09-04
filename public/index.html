@@ -183,7 +183,7 @@ const P={depth:1.5,flow:1.0,hb:0.45,cap:7,cast:'baitUp'};
 /* ================= 河床：分区底质 ================= */
 /* 0 沙底 1 砾石 2 卵石 3 大石区 4 深槽(基岩+粗砾)  */
 const ZONE_T={0:'沙底',1:'砾石',2:'卵石',3:'大石区',4:'基岩',5:'密集碎石'};
-const ZONE_MU={0:0.22,1:0.45,2:0.6,3:0.65,4:0.4,5:0.7};
+const ZONE_MU={0:0.35,1:0.55,2:0.45,3:0.50,4:0.50,5:0.65};   // 沙/砾石/卵石(磨圆更滑)/大石/基岩/碎石
 const PERIOD=62;
 const MIX=[
  {x0:-8, x1:2,  t:1, name:'砾石浅滩'},
@@ -250,7 +250,9 @@ function waterVel(x,y,z,t){
 
 /* ================= 物理 ================= */
 const g=9.81;
-class Node{constructor(m,r,k,wf){this.m=m;this.r=r;this.k=k;this.wf=wf;this.p=new THREE.Vector3();this.v=new THREE.Vector3();this.pp=new THREE.Vector3();this.contact=false;this.onRock=false;this.mu=0;this.pen=0;this.iw=1/m;this.type='line';}}
+const MAT={lead:{muF:1.00,e:0.05,rho:11340},tung:{muF:0.75,e:0.25,rho:19300},steel:{muF:0.80,e:0.20,rho:7800},soft:{muF:1.25,e:0.05,rho:1100},line:{muF:0.9,e:0.1,rho:1150}};
+function radiusOf(m,rho){return Math.cbrt(3*m/(4*Math.PI*rho));}
+class Node{constructor(m,r,k,wf){this.m=m;this.r=r;this.k=k;this.wf=wf;this.mat=MAT.line;this.p=new THREE.Vector3();this.v=new THREE.Vector3();this.pp=new THREE.Vector3();this.contact=false;this.onRock=false;this.mu=0;this.pen=0;this.wedged=0;this.cnx=0;this.cny=1;this.iw=1/m;this.type='line';}}
 let nodes=[],cons=[],F,FT,O,J,M;
 /* 浮漂刚体（x-y 平面）：底端 s=0，顶端 s=L */
 const BODY={L:0.16,m:0.0045,I:0,cm:0.04,x:0,y:0,th:0,vx:0,vy:0,w:0,px:0,py:0,pth:0};
@@ -275,12 +277,12 @@ const PRESETS={
   none:{shots:[],swD:1.3,baits:[{t:'tung',w:0.6,d:0.2},{t:'moss',w:0,d:0.2}]},
 };
 const BAIT_DEF={
-  tung:{name:'钨头 nymph',mk:w=>{const mb=Math.max(0.05,w)/1000,mh=1.2e-4;return new Node(mb+mh,0.004,0.08,(mb*(1-1/19)+mh*(1-1/7.8))/(mb+mh));}},
-  bare:{name:'无钨头若虫',mk:()=>new Node(1.5e-4,0.004,0.06,0.2)},
-  moss:{name:'moss fly',mk:()=>new Node(6e-5,0.008,0.25,0.05)},
-  grass:{name:'真草（灯笼草）',mk:()=>new Node(3e-4,0.01,0.4,0.03)},
+  tung:{name:'钨头 nymph',mk:w=>{const mb=Math.max(0.05,w)/1000,mh=1.2e-4;const n=new Node(mb+mh,Math.max(0.0022,radiusOf(mb,MAT.tung.rho)*1.15),0.08,(mb*(1-1/19.3)+mh*(1-1/7.8))/(mb+mh));n.mat=MAT.tung;return n;}},
+  bare:{name:'无钨头若虫',mk:()=>{const n=new Node(1.5e-4,0.004,0.12,0.2);n.push=1.15;n.mat=MAT.steel;return n;}},
+  moss:{name:'moss fly',mk:()=>{const n=new Node(6e-5,0.010,0.55,0.05);n.push=1.6;n.mat=MAT.soft;return n;}},
+  grass:{name:'真草（灯笼草）',mk:()=>{const n=new Node(3e-4,0.012,0.75,0.03);n.push=1.9;n.mat=MAT.soft;return n;}},
 };
-function shotNode(w){const n=new Node(w/1000,0.004+w*0.0006,0.06+w*0.004,1-1/11.3);n.type='shot';n.w=w;return n;}
+function shotNode(w){const m=w/1000;const n=new Node(m,Math.max(0.002,radiusOf(m,MAT.lead.rho)),0.06+w*0.004,1-1/11.34);n.type='shot';n.w=w;n.mat=MAT.lead;return n;}
 function buildRig(atX){
   const xs=(typeof atX==='number')?atX:1.2; rodTip.set(xs-4.2,1.7,2.6);
   nodes=[];cons=[];const add=n=>(nodes.push(n),n);
@@ -290,11 +292,11 @@ function buildRig(atX){
   const anchors=[...RIG.shots].filter(s=>s.d<RIG.swD-0.02).sort((a,b)=>a.d-b.d).map(s=>({d:s.d,mk:()=>shotNode(s.w)}));
   anchors.push({d:RIG.swD,mk:()=>{const n=new Node(1.0e-4,0.002,0.006,0.85);n.type='swivel';return n;}});
   let cur=0;
-  for(const a of anchors){const L=a.d-cur;const nn=Math.max(1,Math.round(L/0.25));
+  for(const a of anchors){const L=a.d-cur;const nn=Math.max(2,Math.round(L/0.18));
     for(let i=0;i<nn-1;i++){chain.push(add(new Node(4e-5,0.002,0.032,0.12)));seg.push(L/nn);}
     chain.push(add(a.mk()));seg.push(L/nn);cur=a.d;}
   // 转环→饵
-  for(const b of RIG.baits.slice(0,3)){const L=Math.max(0.05,b.d);const nn=Math.max(1,Math.round(L/0.15));
+  for(const b of RIG.baits.slice(0,3)){const L=Math.max(0.05,b.d);const nn=Math.max(2,Math.round(L/0.08));
     for(let i=0;i<nn-1;i++){chain.push(add(new Node(2e-5,0.0015,0.016,0.44)));seg.push(L/nn);}
     const n=BAIT_DEF[b.t].mk(b.w);n.type='bait';n.bt=b.t;n.w=b.w;chain.push(add(n));seg.push(L/nn);}
   for(let i=0;i<chain.length-1;i++)cons.push({a:chain[i],b:chain[i+1],d:seg[i]});
@@ -347,9 +349,9 @@ function step(dt){
     if(inW){const w=waterVel(n.p.x,n.p.y,n.p.z,simT);let rx=n.v.x-w.x,ry=n.v.y-w.y;
       if(n.type==='line'&&n.prev&&n.next){const tx0=n.next.p.x-n.prev.p.x,ty0=n.next.p.y-n.prev.p.y;const tl=Math.hypot(tx0,ty0)||1e-6;const tx=tx0/tl,ty=ty0/tl;
         const vt=rx*tx+ry*ty,vnx=rx-vt*tx,vny=ry-vt*ty;const vn=Math.hypot(vnx,vny);
-        const cn=n.k*vn*dt/n.m,ct=n.k*0.04*Math.abs(vt)*dt/n.m;const vnx2=vnx/(1+cn),vny2=vny/(1+cn),vt2=vt/(1+ct);
+        const cn=n.k*vn*dt/n.m,ct=n.k*0.25*Math.abs(vt)*dt/n.m;const vnx2=vnx/(1+cn),vny2=vny/(1+cn),vt2=vt/(1+ct);
         rx=vnx2+vt2*tx;ry=vny2+vt2*ty;n.v.x=w.x+rx;n.v.y=w.y+ry;}
-      else{const sp=Math.hypot(rx,ry);const c=n.k*sp*dt/n.m;n.v.x=w.x+rx/(1+c);n.v.y=w.y+ry/(1+c);}}
+      else{const sp=Math.hypot(rx,ry);const c=n.k*(n.push||1)*sp*dt/n.m;n.v.x=w.x+rx/(1+c);n.v.y=w.y+ry/(1+c);}}
     n.pp.copy(n.p);n.p.x+=n.v.x*dt;n.p.y+=n.v.y*dt;n.p.z*=0.995;
   }
   const ws=waterVel(F.p.x,Math.min(-0.01,F.p.y),0,simT).x;
@@ -365,9 +367,10 @@ function step(dt){
     for(const n of nodes){
       if(n.body)continue;
       n.contact=false;n.onRock=false;if(it===0)n.pen=0;
-      const by=bed(n.p.x,n.p.z)+n.r; if(n.p.y<by){n.pen+=by-n.p.y;n.p.y=by;n.contact=true;n.mu=zoneAt(n.p.x).mu;n.cnx=0;n.cny=1;}
+      const by=bed(n.p.x,n.p.z)+n.r; if(n.p.y<by){n.pen+=by-n.p.y;n.p.y=by;n.contact=true;n.mu=zoneAt(n.p.x).mu*n.mat.muF;n.cnx=0;n.cny=1;}
       for(const R of rocksNear(n.p.x,n.p.z)){const cx=n.p.x-R.x,cy=n.p.y-R.y,cz=n.p.z-R.z;const dd=Math.sqrt(cx*cx+cy*cy+cz*cz),rr=R.r+n.r;
-        if(dd<rr){const s=rr/Math.max(dd,1e-4);n.pen+=rr-dd;n.p.x=R.x+cx*s;n.p.y=R.y+cy*s;n.contact=true;n.onRock=true;n.mu=0.7;const nl=Math.hypot(cx,cy)||1e-6;n.cnx=cx/nl;n.cny=cy/nl;}}
+        if(dd<rr){const s=rr/Math.max(dd,1e-4);n.pen+=rr-dd;n.p.x=R.x+cx*s;n.p.y=R.y+cy*s;n.contact=true;n.onRock=true;n.mu=(R.r<0.09?0.60:0.40)*n.mat.muF;const nl=Math.hypot(cx,cy)||1e-6;n.cnx=cx/nl;n.cny=cy/nl;
+          if(R.r>=0.04&&R.r<0.16&&n.r<R.r*0.35&&Math.random()<8e-6*(zoneAt(n.p.x).t===5?2.2:zoneAt(n.p.x).t===2?1.4:0.5))n.wedged=1.2;}}   // 卡进石缝
     }
   }
   BODY.vx=(BODY.x-BODY.px)/dt;BODY.vy=(BODY.y-BODY.py)/dt;BODY.w=(BODY.th-BODY.pth)/dt;
@@ -375,16 +378,18 @@ function step(dt){
    if(!anchored&&!taut&&BODY.y<0.05){const kk=Math.min(1,dt*25);BODY.th-=BODY.th*kk;BODY.w*=(1-kk);const lim=0.1;if(Math.abs(BODY.th)>lim){BODY.th=Math.sign(BODY.th)*lim;BODY.w=0;}syncFloatNodes();}}   // 无触底：悬空线组挂在漂正下方，倾角 ≤6°
   syncFloatNodes();F.v.set(BODY.vx,BODY.vy,0);FT.v.set(BODY.vx,BODY.vy,0);
   for(const n of nodes){if(n.body)continue;n.v.x=(n.p.x-n.pp.x)/dt;n.v.y=(n.p.y-n.pp.y)/dt;
-    if(n.contact){ // 非弹性碰撞：去掉法向分离速度的 90%（铅/饵撞砾石几乎不反弹）
-      const vdn=n.v.x*n.cnx+n.v.y*n.cny; if(vdn>0){n.v.x-=vdn*n.cnx*0.9;n.v.y-=vdn*n.cny*0.9;}
-      if(n.v.y>0.2)n.v.y=0.2;   // 翻越石头的爬升限速（附加质量/阻力）
-      // 库仑摩擦：切向减速 ≤ μ×(法向冲量 + 自重压力)
-      const vn=n.pen/dt, dv=n.mu*(vn+g*n.wf*dt*2);
-      n.v.x-=Math.sign(n.v.x)*Math.min(Math.abs(n.v.x),dv); if(n.v.y<0)n.v.y=0;
+    if(n.contact){
+      // 法向：按材质恢复系数（铅≈全塑性，钨珠略弹）+ 水的附加质量抑制爬升
+      const vdn=n.v.x*n.cnx+n.v.y*n.cny;
+      if(vdn>0){const keep=n.mat.e/(1+0.6);n.v.x-=vdn*n.cnx*(1-keep);n.v.y-=vdn*n.cny*(1-keep);}
+      // 库仑摩擦：作用于真实切向分量，冲量 ≤ μ×法向冲量
+      const vtx=n.v.x-vdn*n.cnx, vty=n.v.y-vdn*n.cny; const vt=Math.hypot(vtx,vty);
+      if(vt>1e-6){const vn=n.pen/dt, dv=Math.min(vt,n.mu*(vn+g*n.wf*dt*2));n.v.x-=vtx/vt*dv;n.v.y-=vty/vt*dv;}
+      if(n.wedged>0){n.wedged-=dt*6;n.v.x*=0.05;n.v.y*=0.05;}   // 卡缝：几乎不动，靠拉扯脱出
       if((n.type==='shot'||n.type==='bait')&&Math.floor(simT*12)!==Math.floor((simT-dt)*12))marks.push(n.p.x,n.p.y+0.004,n.p.z,n.type==='shot'?0:(n.bt==='tung'?1:2));}}
   if(phase==='air'&&F.p.y<0.02){phase='sink';if(FISH_ON)for(const f of FISH){const d=Math.hypot(F.p.x-f.x,F.p.z-f.z);if(d<2.5)f.alert=Math.min(1,f.alert+0.85*(1-d/2.5));}}
   if(phase==='sink'&&((O&&O.contact)||J.contact||M.contact||J.p.y<-RIG.swD*0.85))phase='drift';
-  const slowMv=Math.abs(F.v.x)<0.04&&((O&&O.contact)||J.contact);
+  const slowMv=(Math.abs(F.v.x)<0.04&&((O&&O.contact)||J.contact))||nodes.some(n=>n.wedged>0.5);
   if((phase==='drift'||phase==='sink')&&slowMv){snagT+=dt;if(snagT>1.8)phase='snag';}else snagT=0;
   if(phase!=='done'&&F.p.x>172)phase='done';
   setPhase();
