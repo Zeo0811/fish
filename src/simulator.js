@@ -4,6 +4,7 @@ import { makeRiverFish, updateRiverFish, disposeRiverFish, fishPortrait } from '
 import { renderCatchReport } from './catch-view.js';
 import { setupDialogFocus } from './dialogs.js';
 import { sameGaugeBinding } from './gauge-bindings.js';
+import { makeBaitVisual, updateBaitVisual, disposeBaitVisual } from './bait-visuals.js';
 import { setupShell, updateHud, finishLoading, reportError } from './shell.js';
 import './legacy.css';
 import './style.css';
@@ -750,18 +751,17 @@ floatGrp.add(fBody,fTop,fTip);fBody.castShadow=true;
 
 const visGroup=new THREE.Group();scene.add(visGroup);let visMap=new Map();
 const shotMat=new THREE.MeshStandardMaterial({color:0x6d7378,roughness:0.5,metalness:0.6});uw(shotMat);
-function mkBaitVis(n){const g=new THREE.Group();
-  if(n.bt==='tung'){g.add(new THREE.Mesh(new THREE.SphereGeometry(0.0045,12,10),new THREE.MeshStandardMaterial({color:0xc79a3b,metalness:0.85,roughness:0.25})));const b=new THREE.Mesh(new THREE.ConeGeometry(0.0032,0.02,8),new THREE.MeshStandardMaterial({color:0x6b5a30}));b.position.y=-0.012;g.add(b);}
-  else if(n.bt==='bare'){const b=new THREE.Mesh(new THREE.ConeGeometry(0.0032,0.02,8),new THREE.MeshStandardMaterial({color:0x7a6a3a}));b.position.y=-0.008;g.add(b);}
-  else if(n.bt==='grass'){const b=new THREE.Mesh(new THREE.CylinderGeometry(0.003,0.002,0.06,6),new THREE.MeshStandardMaterial({color:0x5f9a4c}));b.position.y=-0.02;g.add(b);}
-  else{g.add(new THREE.Mesh(new THREE.SphereGeometry(0.006,8,6),new THREE.MeshStandardMaterial({color:0x4e9e5f})));
-    for(let i=0;i<14;i++){const f=new THREE.Mesh(new THREE.CylinderGeometry(0.0012,0.0003,0.03+Math.random()*0.02,4),new THREE.MeshStandardMaterial({color:0x6abf78,transparent:true,opacity:0.85}));const a=i/14*6.28;f.position.set(Math.cos(a)*0.004,-0.012,Math.sin(a)*0.004);f.userData.a=a;g.add(f);}}
-  g.userData.fluff=n.bt==='moss'||n.bt==='grass';return g;}
-function rebuildVisuals(){visGroup.clear();visMap=new Map();
+function mkBaitVis(n){return makeBaitVisual(n,{submerge:uw,seed:17});}
+function rebuildVisuals(){
+  for(const m of visMap.values()){
+    if(m.userData.bait)disposeBaitVisual(m);
+    else {m.geometry?.dispose();if(m.material&&m.material!==shotMat)m.material.dispose();}
+  }
+  visGroup.clear();visMap=new Map();
   if(P.mode==='euro'){for(const n of nodes){if(n.type!=='bait')continue;const m=mkBaitVis(n);visGroup.add(m);visMap.set(n,m);}return;}
   for(const n of nodes){let m=null;
     if(n.type==='shot'){m=new THREE.Mesh(new THREE.SphereGeometry(1,16,12),shotMat);m.scale.set(n.r,n.r*1.7,n.r);m.castShadow=true;}
-    else if(n.type==='swivel'){m=new THREE.Mesh(new THREE.TorusGeometry(0.003,0.0009,6,12),new THREE.MeshStandardMaterial({color:0xcfd6d8,metalness:0.9,roughness:0.3}));}
+    else if(n.type==='swivel'){const mat=new THREE.MeshStandardMaterial({color:0xcfd6d8,metalness:0.9,roughness:0.3});uw(mat);m=new THREE.Mesh(new THREE.TorusGeometry(0.003,0.0009,6,12),mat);}
     else if(n.type==='bait'){m=mkBaitVis(n);}
     if(m){visGroup.add(m);visMap.set(n,m);}}
   contactRings.forEach(r=>r.visible=false);}
@@ -964,7 +964,7 @@ function frame(now){try{
   const wk=wakeGeo.attributes.position.array;const wl=0.35;wk[0]=F.p.x;wk[1]=0.003;wk[2]=F.p.z;wk[3]=F.p.x-wl;wk[4]=0.003;wk[5]=F.p.z+wl*0.35;wk[6]=F.p.x;wk[7]=0.003;wk[8]=F.p.z;wk[9]=F.p.x-wl;wk[10]=0.003;wk[11]=F.p.z-wl*0.35;wk[12]=wk[13]=wk[14]=wk[15]=wk[16]=wk[17]=0;wakeGeo.attributes.position.needsUpdate=true;wakeGeo.setDrawRange(0,onSurf&&F.v.x>0.15?4:0);
   floatGrp.scale.setScalar(VS);
   for(const [n,m] of visMap){m.position.copy(n.p);if(n.type==='shot')m.scale.set(n.r*VS,n.r*1.7*VS,n.r*VS);else m.scale.setScalar(VS);
-    if(n.type==='bait'&&m.userData.fluff){const wm=waterVel(n.p.x,n.p.y,n.p.z,simT);m.rotation.z=-Math.min(1.2,(wm.x-n.v.x)*1.5);m.children.forEach(f=>{if(f.userData.a!==undefined)f.rotation.z=Math.cos(f.userData.a)*0.6+Math.sin(simT*6+f.userData.a)*0.25;});}}
+    if(n.type==='bait')updateBaitVisual(m,n,{water:waterVel(n.p.x,n.p.y,n.p.z,simT),time:simT,dt:dt*(slow?.5:1),paused:paused||phase==='done'||phase==='over'});}
   updateTubes();
   if(P.mode==='cp')updateRodLine();else if(rodTube){scene.remove(rodTube);rodTube=null;}
   rodMark.position.copy(rodTip);
@@ -1119,6 +1119,7 @@ finishLoading();requestAnimationFrame(frame);
 window.__river={getState:()=>({mode:P.mode,phase,time:simT,paused,viewMode,depth:P.depth,flow:P.flow,current:currentRiverConditions(),nodes:nodes.map(n=>({type:n.type,p:n.p.toArray(),contact:n.contact})),renderer:world.stats(),assets:world.assetsReady}),setView};
 // Development-only fixtures exercise the real result UI without changing bite odds.
 if(import.meta.env.DEV){
+  window.__river.auditBaits=()=>[...visMap].filter(([n])=>n.type==='bait').map(([n,m])=>({kind:n.bt,index:nodes.indexOf(n),anchor:m.position.distanceTo(n.p),angle:m.rotation.z,time:m.userData.uniforms.baitTime.value,parts:m.children.map(x=>x.name),scale:m.scale.x}));
   window.__river.auditGauge=()=>gaugeEls.map(g=>({index:nodes.indexOf(g.it.n),text:g.val.textContent,clearance:g.it.n.p.y-bed(g.it.n.p.x,g.it.n.p.z)-g.it.n.r,displayed:Number(g.val.dataset.clearance),top:g.mk.style.top}));
   window.__river.auditBed=()=>({physics:PROCKS.map(p=>({...p})),...world.inspectBed(),big:BOULDERS.map(b=>({...b,expected:bed(b.x,b.z)+b.r*1.35,visible:world.probeBed(b.x,b.z)[0]}))});
   window.__river.inspectAt=(x,z=0)=>{paused=true;camX=x;camY=bed(x,z)+.55;follow=false;viewMode='underwater';yaw=tYaw=0;pitch=tPitch=.06;dist=tDist=2.8;};
