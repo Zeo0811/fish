@@ -1,0 +1,4 @@
+#switchRealistic{position:fixed;top:14px;right:14px;z-index:15;display:inline-flex;align-items:center;gap:14px;padding:9px 16px;background:#182226;color:#EEEAE0;border:1px solid #ffffff44;border-radius:5px;text-decoration:none;font:12px/1.5 'PingFang SC',sans-serif;box-shadow:0 4px 20px #0003}
+#switchRealistic:hover{background:#2a454e}#switchRealistic:focus-visible{outline:2px solid #F0632A;outline-offset:3px}
+#ctl{top:66px;max-height:calc(100dvh - 80px)}
+@media(max-width:760px){#switchRealistic{top:8px;right:8px;padding:8px 12px;font-size:11px}#ctl{top:54px;max-height:48vh}}

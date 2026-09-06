@@ -1,0 +1,164 @@
+{
+  "license": "https://polyhaven.com/license",
+  "assets": [
+    {
+      "id": "brown_mud_02",
+      "type": "texture",
+      "source": "https://polyhaven.com/a/brown_mud_02",
+      "license": "CC0-1.0",
+      "file": "sand-*.webp"
+    },
+    {
+      "id": "rock_pitted_mossy",
+      "type": "texture",
+      "source": "https://polyhaven.com/a/rock_pitted_mossy",
+      "license": "CC0-1.0",
+      "file": "stone-*.webp"
+    },
+    {
+      "id": "river_small_rocks",
+      "type": "texture",
+      "source": "https://polyhaven.com/a/river_small_rocks",
+      "license": "CC0-1.0",
+      "file": "pebbles-*.webp"
+    },
+    {
+      "id": "forest_ground_04",
+      "type": "texture",
+      "source": "https://polyhaven.com/a/forest_ground_04",
+      "license": "CC0-1.0",
+      "file": "soil-*.webp"
+    },
+    {
+      "id": "rock_moss_set_01",
+      "type": "model",
+      "source": "https://polyhaven.com/a/rock_moss_set_01",
+      "license": "CC0-1.0",
+      "file": "rock_moss_set_01.glb"
+    },
+    {
+      "id": "rock_09",
+      "type": "model",
+      "source": "https://polyhaven.com/a/rock_09",
+      "license": "CC0-1.0",
+      "file": "rock_09.glb"
+    },
+    {
+      "id": "fern_02",
+      "type": "model",
+      "source": "https://polyhaven.com/a/fern_02",
+      "license": "CC0-1.0",
+      "file": "fern_02.glb"
+    },
+    {
+      "id": "shrub_01",
+      "type": "model",
+      "source": "https://polyhaven.com/a/shrub_01",
+      "license": "CC0-1.0",
+      "file": "shrub_01.glb"
+    },
+    {
+      "id": "tree_small_02",
+      "type": "model",
+      "source": "https://polyhaven.com/a/tree_small_02",
+      "license": "CC0-1.0",
+      "file": "tree_small_02.glb"
+    },
+    {
+      "id": "grass_bermuda_01",
+      "type": "model",
+      "source": "https://polyhaven.com/a/grass_bermuda_01",
+      "license": "CC0-1.0",
+      "file": "grass_bermuda_01.glb"
+    },
+    {
+      "id": "kloofendal_48d_partly_cloudy_puresky",
+      "type": "environment",
+      "source": "https://polyhaven.com/a/kloofendal_48d_partly_cloudy_puresky",
+      "license": "CC0-1.0",
+      "file": "daylight.hdr"
+    }
+  ],
+  "files": {
+    "daylight.hdr": {
+      "bytes": 1435119,
+      "sha256": "fd94c84997b8a3c353b62c2125a9b44e19509956986a126e472684432a02d798"
+    },
+    "fern_02.glb": {
+      "bytes": 289956,
+      "sha256": "dcdcde24c8aa24afaad99b7a08a111a7a394dc24f1233e385d2e6e760c163c5f"
+    },
+    "grass-alpha.png": {
+      "bytes": 59564,
+      "sha256": "e58b3052aad2f107cdd763e437f80ed8fb5a31bcc43b44023f7f767cb3d9888e"
+    },
+    "grass_bermuda_01.glb": {
+      "bytes": 290996,
+      "sha256": "e261ebc8be35941af8fe98ecd7a17df375d888845b3728704c72af31173be798"
+    },
+    "pebbles-color.webp": {
+      "bytes": 344462,
+      "sha256": "51038021197e39da17ef1db087e372fd45440eccacfdf5c44ad20a692644ea86"
+    },
+    "pebbles-normal.webp": {
+      "bytes": 576376,
+      "sha256": "9d3c766a94e1aba2371ea1d7f9c2a984f3a848397ec7d04e95e59ebb26534d64"
+    },
+    "pebbles-rough.webp": {
+      "bytes": 190682,
+      "sha256": "6859fc17b2a6ed930660ae9a96b6885b1fbd026715d5e5ecfebeba890a79d275"
+    },
+    "rock_09.glb": {
+      "bytes": 525768,
+      "sha256": "3cfb553c586cd346d35e5c938f9766bbaa98be29ff1a8efb43250708211bd61b"
+    },
+    "rock_moss_set_01.glb": {
+      "bytes": 1499860,
+      "sha256": "9d6dc08d60bfc05e45614bce60be98ad53e7e8bc1ff60fcae78abef1a90bd2d0"
+    },
+    "sand-color.webp": {
+      "bytes": 249346,
+      "sha256": "e896045e21ba130e3decf93f3c2165fd4c21b711830cdca7f072ed90e5fc867d"
+    },
+    "sand-normal.webp": {
+      "bytes": 610318,
+      "sha256": "434d87a937ce4af2af7415f3e9428f82153ba8174502287ca7bc5057d75dedca"
+    },
+    "sand-rough.webp": {
+      "bytes": 157700,
+      "sha256": "0ac89a30514a59c34ce5d0c354c46a2c434acdd07a72d20d79ef354e5e3af6be"
+    },
+    "shrub_01.glb": {
+      "bytes": 1401304,
+      "sha256": "0386629c53a6b9a0990883cb58751d69fd8c3a8e6e2e876b6a861f1710396a07"
+    },
+    "soil-color.webp": {
+      "bytes": 394066,
+      "sha256": "b7dd485fd11d617ca34a01ee09dc6a08747f8b8a2aa96b4624cc2a9042159cd3"
+    },
+    "soil-normal.webp": {
+      "bytes": 566024,
+      "sha256": "913e98b52a02fab81585ef53a5ff5fd6acb8a7888f7b48cc6dd25b7d615f2bc4"
+    },
+    "soil-rough.webp": {
+      "bytes": 177084,
+      "sha256": "7a6ab779daf13c5e02777d68c813245613155d1fd61d2febd1698f10b2febe19"
+    },
+    "stone-color.webp": {
+      "bytes": 349570,
+      "sha256": "948dced69b6e8d95a8734f4fb967bd7f93bd93fe82693546468aac0b09c0fa19"
+    },
+    "stone-normal.webp": {
+      "bytes": 456914,
+      "sha256": "b255f6b3141c084593ce214534d1fc06a4aa0bbd34cd99d16f2e8e6706e325e1"
+    },
+    "stone-rough.webp": {
+      "bytes": 184280,
+      "sha256": "6915a953b25b0bb60740657578151549544672656c39dc12f459a4a2a49f510c"
+    },
+    "tree_small_02.glb": {
+      "bytes": 8058372,
+      "sha256": "ecdebfd6b1858b4c5e5aafe73f461c9af94a512dc8114ce1a149c05c5e5cecaf"
+    }
+  }
+}

@@ -1,0 +1,159 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>溪流 · River Studio</title>
+<link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='7' fill='%23182226'/%3E%3Cpath d='M5 22c4-4 7-4 11 0s7 4 11 0' fill='none' stroke='%232A8CA0' stroke-width='3' stroke-linecap='round'/%3E%3Cpath d='M7 7c8 0 12 3 12 9v5c0 4 6 4 7 0' fill='none' stroke='%23EEEAE0' stroke-width='2.4' stroke-linecap='round'/%3E%3Ccircle cx='19' cy='19' r='2.5' fill='%23F0632A'/%3E%3C/svg%3E">
+
+<meta name="description" content="走进一段溪流，观察水面、河床与钓组。支持 Centerpin 与 Euro nymph 物理模拟。">
+</head>
+<body>
+<div id="view"></div>
+
+<div id="left">
+  <div id="title" class="card">
+    <div class="btns" style="margin:0 0 8px"><button id="mCP" class="on">Centerpin</button><button id="mEU" class="ghost">Euro nymph</button></div>
+    <div class="title-lockup">
+      <svg class="brand-icon" viewBox="0 0 32 32" role="img" aria-label="河流线组模拟图标">
+        <title>河流线组模拟</title>
+        <rect width="32" height="32" rx="7" fill="#182226"/>
+        <path d="M5 22c4-4 7-4 11 0s7 4 11 0" fill="none" stroke="#2A8CA0" stroke-width="3" stroke-linecap="round"/>
+        <path d="M7 7c8 0 12 3 12 9v5c0 4 6 4 7 0" fill="none" stroke="#EEEAE0" stroke-width="2.4" stroke-linecap="round"/>
+        <circle cx="19" cy="19" r="2.5" fill="#F0632A"/>
+      </svg>
+      <h1 id="titleH">Centerpin · 河流物理模拟</h1>
+    </div>
+    <p id="viewHint">镜头垂直于流向，跟随浮漂。拖动旋转，滚轮或双指缩放。</p>
+    <span id="phase" class="air">空中</span>
+  </div>
+  <div id="gauge" class="card">
+    <h2>深度仪 <span id="gDepth">水深 —</span></h2>
+    <div class="col">
+      <div class="tube">
+        <div class="surf"></div>
+        <svg class="vprof" id="vprof" viewBox="0 0 54 280" preserveAspectRatio="none"></svg>
+        <div class="mk f" id="mkF" data-l="漂"></div><div id="mkDyn"></div>
+        <div class="bed"></div>
+      </div>
+      <div class="rows" id="rowsDyn" style="justify-content:flex-start;gap:3px">
+        <div class="row"><i style="background:var(--float)"></i><span>浮漂</span><b id="rF">—</b></div>
+      </div>
+    </div>
+    <div style="margin-top:8px;font-size:11px;color:var(--ink2);display:flex;justify-content:space-between"><span id="tipLbl">漂尖露出（最近 6 s）</span><b id="tipNow" style="color:var(--ink)">—</b></div>
+    <svg id="tipHist" viewBox="0 0 220 34" style="width:100%;height:34px;background:#dfe6e8;border-radius:3px;display:block"></svg>
+    <div class="fr" id="frDyn"></div>
+    <div class="kpi" id="qbox" style="display:none">
+      <div><span>呈现评分</span><b id="qTot">—</b></div>
+      <div id="qSub" style="display:grid;grid-template-columns:repeat(4,1fr);gap:3px 6px;font-size:10px;color:var(--ink2)"></div>
+    </div>
+    <div class="kpi">
+      <div><span id="spdLbl">漂速 / 表层水速</span><b id="kSpeed">—</b></div>
+      <div><span id="leadLbl">轻蝇相对浮漂</span><b id="kLead">—</b></div>
+      <div id="tiltRow"><span id="tiltLbl">浮漂倾角</span><b id="kTilt">—</b></div>
+      <div id="payRow"><span id="payLbl">放线速率</span><b id="kPay">—</b></div>
+      <div><span>脚下底质 / 摩擦</span><b id="kSub">—</b></div>
+    </div>
+  </div>
+</div>
+
+<div id="ctl" class="card">
+  <h2>河床</h2>
+  <div class="s"><select id="bedType" style="width:100%;font:inherit;font-size:12px;padding:5px;border:1px solid var(--rule);border-radius:4px;background:#fff">
+    <option value="mixed">混合分区（每 62 m 循环）</option><option value="rubble">密集碎石（全程）</option><option value="cobble">卵石（全程）</option><option value="boulder">卵石 + 大石（全程）</option><option value="gravel">砾石（全程）</option><option value="sand">沙底（全程）</option><option value="bedrock">基岩板（全程）</option></select></div>
+  <h2>河流</h2>
+  <div class="btns" style="margin-top:0"><button id="bFlat" class="ghost">水深恒定（河床不起伏）</button></div>
+  <div class="s"><label>基准水深 <span id="depthHint" style="color:var(--ink2)">（DIY 后 = 漂→最下铅）</span><b id="vDepth">1.50 m</b></label><input type="range" id="depth" min="0.8" max="3.2" step="0.01" value="1.5"></div>
+  <div class="s"><label>表层流速 <span id="vRegime" style="color:var(--water)">中流</span><b id="vFlow">1.0 m/s</b></label><input type="range" id="flow" min="0.3" max="2.5" step="0.05" value="1.0"></div>
+  <div id="cpPanel">
+  <h2>holding back</h2>
+  <div class="btns" style="margin-top:0"><button id="bAuto" class="ghost">完美演示：自动调 holding back</button></div>
+  <div class="s"><label>放线慢于表层<b id="vHb">45%</b></label><input type="range" id="hb" min="0" max="90" step="1" value="45"></div>
+  <h2>线组</h2>
+  <div class="s"><label>抛投落水姿态</label>
+    <div class="btns" style="margin-top:4px"><button class="ghost castopt on" data-c="baitUp">饵在上游<br><small>落水前压轮拉直</small></button><button class="ghost castopt" data-c="floatUp">饵在下游<br><small>不压轮，漂先落</small></button><button class="ghost castopt" data-c="heap">一堆落水<br><small>未展开</small></button></div>
+  </div>
+  </div>
+  <div id="euPanel" style="display:none">
+    <h2>lead（竿尖引导）</h2>
+    <div class="btns" style="margin-top:0"><button id="bAutoLead" class="ghost">自动 lead + 竿尖高度</button></div>
+    <div class="s"><label>竿尖速度 / 蝇层水速 <span id="euState" style="color:var(--water)"></span><b id="vLead">1.02×</b></label><input type="range" id="lead" min="75" max="130" step="1" value="102"></div>
+    <div class="s"><label>竿尖高度<b id="vRodH">0.8 m</b></label><input type="range" id="rodH" min="0.3" max="2.0" step="0.1" value="0.8"></div>
+    <h2>Euro 线组</h2>
+    <div class="btns" style="margin-top:0"><button class="ghost etopo on" data-t="heavyBottom">上轻下重<br><small>重蝇在末端</small></button><button class="ghost etopo" data-t="heavyTag">上重下轻<br><small>轻蝇串在重蝇下方</small></button></div>
+    <div class="s"><label>leader 长度<b id="vLL">280 cm</b></label><input type="range" id="ll" min="120" max="450" step="5" value="280"></div>
+    <div class="s"><label id="taLbl">T 型节位置（末蝇上方）<b id="vTA">50 cm</b></label><input type="range" id="ta" min="15" max="120" step="5" value="50"></div>
+    <div class="s" id="tlWrap"><label>T 型节长度<b id="vTL">13 cm</b></label><input type="range" id="tl" min="5" max="30" step="1" value="13"></div>
+    <div class="s"><label>重蝇<b id="vHW">0.50 g</b></label><input type="range" id="hw" min="0.1" max="1.5" step="0.05" value="0.5"></div>
+    <div class="s"><label>轻蝇<b id="vLW">0.12 g</b></label><input type="range" id="lw" min="0" max="0.6" step="0.02" value="0.12"></div>
+  </div>
+  <h2>场景画面 <span style="font-weight:400;color:var(--ink2)">River Studio</span></h2>
+  <div class="btns" style="margin-top:4px"><button id="bNatural" class="on" aria-pressed="true">清溪写实</button><button id="bTeaching" class="ghost" aria-pressed="false">教学清晰</button></div>
+  <p class="note" style="margin-top:4px">写实模式增强水色与远近层次；线组大小可单独调整。</p>
+  <div class="s"><label>元件视觉放大<b id="vScale">2.5×</b></label><input type="range" id="vscale" min="1" max="4" step="0.5" value="2.5"></div>
+  <div class="s" id="capWrap"><label>浮漂承重 <span style="color:var(--ink2)">（DIY 后 = 线组重 + 1.5g）</span><b id="vCap">7 g</b></label><input type="range" id="cap" min="2" max="14" step="0.5" value="7"></div>
+  <p class="note" id="rigSummary" style="margin-top:4px"></p>
+  <div class="btns"><button id="bDiy">线组 DIY：布铅与挂饵</button></div>
+  <div class="btns"><button id="bCast">重新抛投</button><button id="bHere" class="ghost">此处重抛</button><button id="bStep" class="ghost" style="display:none">下移站位</button><button id="bWalk" class="ghost" style="display:none">跟着走</button><button id="bPause" class="ghost">暂停</button><button id="bFollow" class="on">跟随</button></div>
+  <div class="btns"><button id="bFish" class="ghost on">鱼模拟</button><button id="bShowFish" class="ghost">显示鱼位</button></div>
+  <div class="btns"><button id="bReset" class="ghost">镜头回正</button><button id="bArrows" class="ghost">流速粒子</button><button id="bSlow" class="ghost">慢放 ½</button><button id="bMarks" class="ghost">擦底痕</button></div>
+
+</div>
+
+<div id="driftEndWrap" class="studio-overlay" role="dialog" aria-modal="true" aria-labelledby="driftEndTitle" style="display:none">
+ <div class="studio-dialog drift-dialog">
+  <span class="dialog-kicker">END OF DRIFT · 漂流记录</span>
+  <h2 id="driftEndTitle">这一段，漂完了。</h2>
+  <div class="drift-distance"><b>5</b><span>米<br>到底后的有效漂流</span></div>
+  <p class="dialog-description">站定的漂流已结束。可以沿岸跟走，继续观察这条水流；也可以结束本次，重新选择抛点。</p>
+  <div class="dialog-actions"><button id="driftContinue">沿岸继续 <small>切换为跟走模式</small></button><button id="driftStop" class="ghost">结束本次</button></div>
+ </div>
+</div>
+
+<div id="biteWrap" class="studio-overlay" role="dialog" aria-modal="true" aria-labelledby="biteTitle" style="display:none">
+ <div class="studio-dialog catch-dialog">
+  <div class="dialog-header"><div><span class="dialog-kicker">CATCH RECORD · 本次模拟</span><h2 id="biteTitle">中鱼记录</h2></div><button id="biteX" class="dialog-close ghost" aria-label="关闭中鱼记录">关闭 <span aria-hidden="true">×</span></button></div>
+  <div id="biteBody"></div>
+  <div id="biteSnap"></div>
+  <p class="note" id="biteNote">只有当饵与所在层水流同速、领先浮漂、在鱼的取食层、没有死拖底、没惊到鱼、鱼正开口时，才会咬钩。</p>
+  <div class="dialog-actions"><button id="biteClose">此处再抛一次 ↗</button><button id="biteStay" class="ghost">回到起点</button><button id="biteSave" class="ghost">保存快照 ↓</button></div>
+ </div>
+</div>
+<div id="modalWrap" class="studio-overlay" role="dialog" aria-modal="true" aria-labelledby="rigTitle" style="display:none">
+ <div id="modal" class="studio-dialog rig-dialog">
+  <div class="dialog-header">
+    <div><span class="dialog-kicker">RIG WORKSHOP · 线组工坊</span><h2 id="rigTitle">线组 DIY</h2></div>
+    <button id="mClose" class="dialog-close ghost" aria-label="关闭线组工坊">完成 <span aria-hidden="true">×</span></button>
+  </div>
+  <p class="dialog-description">选择布铅方式，微调重量与间距。拖动示意图，也能调整位置。</p>
+  <div class="rig-presets">
+    <button class="ghost preset" data-p="single">一颗大铅</button>
+    <button class="ghost preset" data-p="double">双铅</button>
+    <button class="ghost preset" data-p="grad">多颗渐进</button>
+    <button class="ghost preset" data-p="none">无铅</button>
+  </div>
+  <div class="rig-workspace">
+    <figure class="rig-diagram"><figcaption>线组剖面 <span>拖动调整 ↕</span></figcaption><svg id="schem" viewBox="0 0 230 420" aria-label="可拖动调整的线组示意图"></svg></figure>
+    <div class="rig-fields">
+      <h3 style="font-size:12px;margin:2px 0 6px">布铅（距浮漂的距离，cm）</h3>
+      <div id="shotRows"></div>
+      <div class="btns" style="margin-top:4px"><button id="addShot" class="ghost">+ 加一颗铅</button></div>
+      <h3 style="font-size:12px;margin:12px 0 6px">转环 <span style="font-weight:400;color:var(--ink2)">距浮漂</span>
+        <input id="swD" type="number" step="1" min="30" max="350" style="width:70px;font:inherit;padding:2px 4px"> cm</h3>
+      <h3 style="font-size:12px;margin:12px 0 6px">转环下挂饵（每个饵距上一个的距离）</h3>
+      <div id="baitRows"></div>
+      <div class="btns" style="margin-top:4px"><button id="addBait" class="ghost">+ 加一个饵</button></div>
+
+    </div>
+  </div>
+ </div>
+</div>
+
+
+<div id="zone" class="card">底质：<b id="zName">—</b></div>
+
+
+
+<script type="module" src="/src/simulator.js"></script>
+</body>
+</html>

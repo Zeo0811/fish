@@ -1,4 +1,9 @@
 node_modules/
+dist/
+.asset-cache/
+artifacts/
+.superdesign/
+.env
+.env.*
 .DS_Store
 *.log
-.env

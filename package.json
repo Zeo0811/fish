@@ -1,15 +1,29 @@
 {
-  "name": "fish",
+  "name": "river-studio",
   "version": "1.0.0",
   "private": true,
-  "description": "Centerpin 线组 · 河流物理模拟",
-  "engines": {
-    "node": ">=18"
-  },
+  "type": "module",
+  "engines": { "node": ">=22.12.0" },
   "scripts": {
-    "start": "node server.js"
+    "dev": "vite --host 0.0.0.0",
+    "build": "vite build",
+    "start": "node server.mjs",
+    "test": "node --test tests/*.test.mjs",
+    "test:browser": "node scripts/browser-check.mjs",
+    "assets:fetch": "node scripts/fetch-assets.mjs"
   },
   "dependencies": {
-    "express": "^4.18.2"
+    "compression": "1.8.1",
+    "express": "5.1.0",
+    "three": "0.180.0"
+  },
+  "devDependencies": {
+    "@gltf-transform/core": "4.2.1",
+    "@gltf-transform/extensions": "4.2.1",
+    "@gltf-transform/functions": "4.2.1",
+    "meshoptimizer": "0.23.0",
+    "playwright": "1.55.1",
+    "sharp": "0.35.4",
+    "vite": "7.3.6"
   }
 }
