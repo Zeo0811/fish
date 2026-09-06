@@ -5,6 +5,7 @@ import { Reflector } from 'three/addons/objects/Reflector.js';
 import { Refractor } from 'three/addons/objects/Refractor.js';
 import { loadProgress } from './shell.js';
 import { waterAppearance, surfaceWaves } from './water-effects.js';
+import { collisionRockPlacements, makeBedGeometry, makeBedMaterial, makeCollisionRockGeometry } from './riverbed-visuals.js';
 
 const A='/assets/';
 const riverLight=`
@@ -71,7 +72,7 @@ export async function createRiverWorld({host,P,bed,zoneAt}){
   const landscape=new THREE.Group();scene.add(landscape);
   function instances(parts,placements,parent=landscape,{shadows=true}={}){
     const chunks=new Map();for(const p of placements){const key=Math.floor(p.x/20);if(!chunks.has(key))chunks.set(key,[]);chunks.get(key).push(p);}
-    return [...chunks.values()].flatMap(rows=>parts.map(({geometry,material})=>{const mesh=new THREE.InstancedMesh(geometry,material,rows.length),dummy=new THREE.Object3D();rows.forEach((p,i)=>{dummy.position.set(p.x,p.y,p.z);dummy.rotation.set(p.rx||0,p.rot||0,p.rz||0);dummy.scale.set(p.sx||p.s,p.sy||p.s,p.sz||p.s);dummy.updateMatrix();mesh.setMatrixAt(i,dummy.matrix);});if(parent===landscape)mesh.userData.shoreRows=rows.map(p=>({x:p.x,z:p.z,offset:p.y-shoreHeight(p.x,p.z)}));mesh.castShadow=mesh.receiveShadow=shadows;mesh.computeBoundingSphere();parent.add(mesh);return mesh;}));
+    return [...chunks.values()].flatMap(rows=>parts.map(({geometry,material})=>{const mesh=new THREE.InstancedMesh(geometry,material,rows.length),dummy=new THREE.Object3D();rows.forEach((p,i)=>{dummy.position.set(p.x,p.y,p.z);dummy.rotation.set(p.rx||0,p.rot||0,p.rz||0);dummy.scale.set(p.sx||p.s,p.sy||p.s,p.sz||p.s);dummy.updateMatrix();mesh.setMatrixAt(i,dummy.matrix);if(p.color!==undefined)mesh.setColorAt(i,new THREE.Color(p.color));});if(parent===landscape)mesh.userData.shoreRows=rows.map(p=>({x:p.x,z:p.z,offset:p.y-shoreHeight(p.x,p.z)}));mesh.castShadow=mesh.receiveShadow=shadows;mesh.computeBoundingSphere();parent.add(mesh);return mesh;}));
   }
   function shoreHeight(x,z){const side=Math.sign(z),d=Math.max(0,Math.abs(z)-4.6),width=2.6+.35*Math.sin(x*.22+side)+.17*Math.sin(x*.81);
     const waterBed=bed(x,z)-.025;const rise=THREE.MathUtils.smoothstep(d,0,width);return THREE.MathUtils.lerp(waterBed,.3+Math.max(0,d-width)*.14,rise)+Math.max(0,rise-.5)*(.3*Math.sin(x*.21+z*.37)+.13*Math.sin(x*.82-z*.54));}
@@ -100,17 +101,27 @@ export async function createRiverWorld({host,P,bed,zoneAt}){
     for(let i=0;i<count;i++){const x=-40+rnd()*240,z=(i%2?1:-1)*(isTree?18+rnd()*35:9+rnd()*12);rows.push({x,y:shoreHeight(x,z),z,s:isTree?7+rnd()*8:1+rnd()*2,rot:(rnd()-.5)*.6});}return instances([{geometry:geo,material}],rows,landscape,{shadows:false});}
   distant(treeSprite.texture,300,true);distant(bushSprite.texture,180,false);
   const bedGroup=new THREE.Group();scene.add(bedGroup);let terrainMesh=null,bedGeometries=[];
-  const bedMat=pbr('pebbles',{normalScale:new THREE.Vector2(.9,.9),color:0xb9bc9f});
-  const bedBase=bedMat.onBeforeCompile;bedMat.onBeforeCompile=sh=>{bedBase(sh);sh.uniforms.uSandMap={value:textures['sand-color']};sh.uniforms.uStoneMap={value:textures['stone-color']};sh.vertexShader=sh.vertexShader.replace('#include <common>','#include <common>\nattribute float bedType;varying float vBedType;').replace('#include <begin_vertex>','#include <begin_vertex>\nvBedType=bedType;');sh.fragmentShader=sh.fragmentShader.replace('#include <common>','#include <common>\nvarying float vBedType;uniform sampler2D uSandMap,uStoneMap;').replace('#include <map_fragment>',`vec4 c=texture2D(map,vMapUv);float sandMix=1.-smoothstep(.1,.8,vBedType);float stoneMix=smoothstep(3.5,3.9,vBedType)*(1.-smoothstep(4.1,4.5,vBedType));c=mix(c,texture2D(uSandMap,vMapUv),sandMix);c=mix(c,texture2D(uStoneMap,vMapUv*.55),stoneMix);diffuseColor*=c;`);};bedMat.customProgramCacheKey=()=> 'river-bed-v1';
-  const pebbleGeo=new THREE.IcosahedronGeometry(1,1);pebbleGeo.scale(1,.60,1);const pebbleMat=pbr('stone',{color:0xc8c5b2,roughness:.83});
-  let surfaceBoulders=[];
+  const bedMat=makeBedMaterial(textures,submerge);materialSet.add(bedMat);
+  const pebbleGeo=makeCollisionRockGeometry(),boulderGeo=makeCollisionRockGeometry(true);
+  const pebbleMat=pbr('stone',{color:0xbcb9a8,roughness:.86,normalScale:new THREE.Vector2(.38,.38)});
+  const rubbleMat=pbr('stone',{color:0xb5bdb6,flatShading:true,roughness:.94,normalScale:new THREE.Vector2(.3,.3)});
+  for(const material of [pebbleMat,rubbleMat]){
+    const prior=material.onBeforeCompile;
+    material.onBeforeCompile=sh=>{prior(sh);sh.fragmentShader=sh.fragmentShader.replace('#include <map_fragment>',`vec4 mineral=texture2D(map,vMapUv);float grey=dot(mineral.rgb,vec3(.2126,.7152,.0722));mineral.rgb=mix(vec3(grey),mineral.rgb,.42);diffuseColor*=mineral;`);};
+    material.customProgramCacheKey=()=> 'river-mineral-v2';
+  }
+  let surfaceBoulders=[],bedPlacements=[];
   function buildBed(items,boulders){
     surfaceBoulders=boulders.map(b=>({...b,top:bed(b.x,b.z)+b.r*1.35}));
     bedGroup.traverse(o=>{if(o.isInstancedMesh)o.dispose();});bedGroup.clear();bedGeometries.forEach(g=>g.dispose());bedGeometries=[];
-    const geo=new THREE.PlaneGeometry(260,9,650,40);geo.rotateX(-Math.PI/2);const a=geo.attributes.position,uv=geo.attributes.uv,type=[];
-    for(let i=0;i<a.count;i++){const x=a.getX(i)+78,z=a.getZ(i);a.setXYZ(i,x,bed(x,z),z);uv.setXY(i,x*.85,z*.85);type.push(zoneAt(x).t);}geo.setAttribute('bedType',new THREE.Float32BufferAttribute(type,1));geo.computeVertexNormals();terrainMesh=new THREE.Mesh(geo,bedMat);terrainMesh.receiveShadow=true;bedGroup.add(terrainMesh);bedGeometries.push(geo);
-    const rows=items.filter(it=>it.r>.047).map(it=>({x:it.x,y:it.y,z:it.z,sx:it.r*it.sx,sy:it.r,sz:it.r*it.sz,rot:it.rot}));instances([{geometry:pebbleGeo,material:pebbleMat}],rows,bedGroup,{shadows:false});
-    const bigRows=boulders.map(B=>({x:B.x,y:bed(B.x,B.z)-B.r*.37,z:B.z,s:B.r*2,rot:Math.sin(B.x)*3}));instances(assets.stone,bigRows,bedGroup);
+    const geo=makeBedGeometry(bed,zoneAt);terrainMesh=new THREE.Mesh(geo,bedMat);terrainMesh.receiveShadow=true;bedGroup.add(terrainMesh);bedGeometries.push(geo);
+    bedPlacements=collisionRockPlacements(items,boulders,bed,zoneAt);
+    for(const kind of ['pebbles','rubble','boulders']){
+      const big=kind==='boulders',angular=kind==='rubble';
+      const rows=bedPlacements.filter(p=>p.big===big&&(big||(p.t===5)===angular)).map(p=>({...p,s:p.r,color:new THREE.Color().setHSL(.07+.045*Math.sin(p.x*17),.08+.13*(.5+.5*Math.sin(p.z*29)),.63+.14*Math.sin(p.x*13+p.z))}));
+      const meshes=instances([{geometry:big?boulderGeo:pebbleGeo,material:angular?rubbleMat:pebbleMat}],rows,bedGroup,{shadows:big});
+      meshes.forEach(m=>{m.name=big?'collision-boulders':'collision-pebbles';});
+    }
     for(const mesh of terrainParts){const a=mesh.geometry.attributes.position;for(let i=0;i<a.count;i++)a.setY(i,shoreHeight(a.getX(i),a.getZ(i)));a.needsUpdate=true;mesh.geometry.computeVertexNormals();}
     const mat=new THREE.Matrix4();landscape.traverse(mesh=>{if(!mesh.userData.shoreRows)return;mesh.userData.shoreRows.forEach((p,i)=>{mesh.getMatrixAt(i,mat);mat.elements[13]=shoreHeight(p.x,p.z)+p.offset;mesh.setMatrixAt(i,mat);});mesh.instanceMatrix.needsUpdate=true;mesh.computeBoundingSphere();});
     renderer.shadowMap.needsUpdate=true;
@@ -167,5 +178,7 @@ export async function createRiverWorld({host,P,bed,zoneAt}){
   function resize(){camera.aspect=innerWidth/innerHeight;camera.updateProjectionMatrix();renderer.setSize(innerWidth,innerHeight);}
   function setQuality(q){quality=q;renderer.setPixelRatio(Math.min(devicePixelRatio,q==='high'?2:1.5));const n=q==='high'?1024:768;reflection.getRenderTarget().setSize(n,n);refraction.getRenderTarget().setSize(n,n);resize();}
   function stats(){return{calls:renderer.info.render.calls,triangles:renderer.info.render.triangles,geometries:renderer.info.memory.geometries,textures:renderer.info.memory.textures,quality,frames:frameCount,water:{...appearance,travel:waterTravel},programErrors:renderer.info.programs.filter(p=>p.diagnostics?.runnable===false).length};}
-  return {scene,camera,renderer,nature,buildBed,submerge,update,render,resize,setQuality,stats,assetsReady:true};
+  function inspectBed(){return {placements:bedPlacements,geometryVertices:terrainMesh.geometry.attributes.position.count};}
+  function probeBed(x,z){scene.updateMatrixWorld(true);const ray=new THREE.Raycaster(new THREE.Vector3(x,8,z),new THREE.Vector3(0,-1,0));return ray.intersectObject(bedGroup,true).map(h=>({y:h.point.y,name:h.object.name||'terrain'}));}
+  return {scene,camera,renderer,nature,buildBed,submerge,update,render,resize,setQuality,stats,inspectBed,probeBed,assetsReady:true};
 }

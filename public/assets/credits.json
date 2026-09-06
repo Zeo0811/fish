@@ -2,13 +2,6 @@
   "license": "https://polyhaven.com/license",
   "assets": [
     {
-      "id": "brown_mud_02",
-      "type": "texture",
-      "source": "https://polyhaven.com/a/brown_mud_02",
-      "license": "CC0-1.0",
-      "file": "sand-*.webp"
-    },
-    {
       "id": "rock_pitted_mossy",
       "type": "texture",
       "source": "https://polyhaven.com/a/rock_pitted_mossy",
@@ -28,6 +21,13 @@
       "source": "https://polyhaven.com/a/forest_ground_04",
       "license": "CC0-1.0",
       "file": "soil-*.webp"
+    },
+    {
+      "id": "damp_beach_sand_02",
+      "type": "texture",
+      "source": "https://polyhaven.com/a/damp_beach_sand_02",
+      "license": "CC0-1.0",
+      "file": "sand-*.webp"
     },
     {
       "id": "rock_moss_set_01",
@@ -117,16 +117,16 @@
       "sha256": "9d6dc08d60bfc05e45614bce60be98ad53e7e8bc1ff60fcae78abef1a90bd2d0"
     },
     "sand-color.webp": {
-      "bytes": 249346,
-      "sha256": "e896045e21ba130e3decf93f3c2165fd4c21b711830cdca7f072ed90e5fc867d"
+      "bytes": 195442,
+      "sha256": "9671065dbcd645958e8e05e8fad72f176474a3d666c1626bf4822b47dedfd91a"
     },
     "sand-normal.webp": {
-      "bytes": 610318,
-      "sha256": "434d87a937ce4af2af7415f3e9428f82153ba8174502287ca7bc5057d75dedca"
+      "bytes": 206012,
+      "sha256": "065a0ee024a7f7a26634dba71a07fef9d1edc85d78d8d3e04ab7e87e2bafc016"
     },
     "sand-rough.webp": {
-      "bytes": 157700,
-      "sha256": "0ac89a30514a59c34ce5d0c354c46a2c434acdd07a72d20d79ef354e5e3af6be"
+      "bytes": 218620,
+      "sha256": "cc104bc4050e45476ef320c8aa2574c2046b21309159a28c29a22cab434c86af"
     },
     "shrub_01.glb": {
       "bytes": 1401304,

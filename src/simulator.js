@@ -3,6 +3,7 @@ import { createRiverWorld } from './world.js';
 import { makeRiverFish, updateRiverFish, disposeRiverFish, fishPortrait } from './fish-visuals.js';
 import { renderCatchReport } from './catch-view.js';
 import { setupDialogFocus } from './dialogs.js';
+import { sameGaugeBinding } from './gauge-bindings.js';
 import { setupShell, updateHud, finishLoading, reportError } from './shell.js';
 import './legacy.css';
 import './style.css';
@@ -865,9 +866,11 @@ function updateTip(dt){if(P.mode==='euro'){const belly=EURO?EURO.slack:0;tipH.pu
   $('tipLbl').textContent='漂尖露出（最近 6 s）';$('tipNow').textContent=FT.p.y<-0.01?'沉没':(out*100).toFixed(1)+' cm';}
 let gaugeEls=[];let gaugeBuilt=false;
 function rigSignature(){return P.mode+'|'+nodes.filter(n=>n.type==='shot'||n.type==='bait'||n.type==='swivel').map(n=>n.type+(n.bt||'')+(n.w||0)).join(',');}
-let gaugeSig='';
+let gaugeSig='',gaugeNodes=[];
 function buildGauge(){
-  const sig=rigSignature();if(sig===gaugeSig&&gaugeEls.length)return;gaugeSig=sig;
+  const sig=rigSignature()+'|'+ERIG.topo;
+  if(gaugeEls.length&&sameGaugeBinding(gaugeNodes,nodes,gaugeSig,sig))return;
+  gaugeSig=sig;gaugeNodes=[...nodes];
   if(P.mode==='euro'){
     const rows=$('rowsDyn'),mk2=$('mkDyn'),fr=$('frDyn');rows.innerHTML='';mk2.innerHTML='';fr.innerHTML='';gaugeEls=[];
     const rt=document.createElement('div');rt.className='row';rt.innerHTML='<i style="background:var(--float)"></i><span>线组状态</span><b id="rF">—</b>';rows.appendChild(rt);
@@ -904,7 +907,8 @@ function currentRiverConditions(){
 function updateGauge(){
   const current=currentRiverConditions(),refX=current.x;
   const h=current.depth,b=-h;$('gDepth').textContent=`此处水深 ${h.toFixed(2)} m`;
-  if(P.mode==='cp')mk($('mkF'),F,b,h);else $('mkF').style.display='none';
+  $('mkF').style.display=P.mode==='cp'?'':'none';
+  if(P.mode==='cp')mk($('mkF'),F,b,h);
   if(P.mode==='euro'){const belly=EURO?EURO.slack:0,leadDown=rodTip.x>=M.p.x;const curve=belly<0.025?'偏紧':belly>0.15?'belly 偏大':'微 belly';
     $('rF').textContent=(leadDown?'下游 lead':'跟随')+' · '+(belly*100).toFixed(0)+'cm';$('euState').textContent=(leadDown?'整体 lead':'尚未 lead')+' · '+curve;
     // 水流沿 +x：竿尖 x 更大时位于蝇的下游，也就是正在 lead 蝇。
@@ -917,7 +921,7 @@ function updateGauge(){
       else $('rDrift').textContent='下沉中 '+done.toFixed(1)+' m';}}
   else $('rF').textContent=F.p.y>0.02?'空中':(FT.p.y<-0.01?'⚠ 被拖沉 '+(-FT.p.y*100).toFixed(0)+'cm（承重不足）':'露出 '+(Math.max(0,FT.p.y)*100).toFixed(0)+'cm');
   const off=n=>n.p.y-bed(n.p.x,n.p.z)-n.r;
-  for(const g of gaugeEls){const n=g.it.n;const o=off(n);g.val.textContent=(o<0.005?'触底':(o*100).toFixed(0)+' cm');mk(g.mk,n,b,h);if(g.fr){const nm=g.it.short;if(n.contact){g.fr.textContent=nm+(n.onRock?' · 蹭石':' · 擦底')+' μ'+n.mu.toFixed(2);g.fr.classList.add('on');}else{g.fr.textContent=nm+' · 无接触';g.fr.classList.remove('on');}}}
+  for(const g of gaugeEls){const n=g.it.n;const o=off(n);g.val.textContent=n.contact?(n.onRock?'触石':'触底'):(o<0.005?'近底':(o*100).toFixed(0)+' cm');g.val.dataset.nodeIndex=nodes.indexOf(n);g.val.dataset.clearance=o.toFixed(6);mk(g.mk,n,b,h);if(g.fr){const nm=g.it.short;if(n.contact){g.fr.textContent=nm+(n.onRock?' · 蹭石':' · 擦底')+' μ'+n.mu.toFixed(2);g.fr.classList.add('on');}else{g.fr.textContent=nm+' · 无接触';g.fr.classList.remove('on');}}}
   if($('rMv')){$('rMv').textContent=waterVel(M.p.x,M.p.y,M.p.z,simT).x.toFixed(2)+' m/s';$('rMs').textContent=Math.abs(M.v.x).toFixed(2)+' m/s';}
 
   $('spdLbl').textContent=(P.mode==='euro')?'末蝇速度 / 表层水速':'漂速 / 表层水速';
@@ -1115,6 +1119,9 @@ finishLoading();requestAnimationFrame(frame);
 window.__river={getState:()=>({mode:P.mode,phase,time:simT,paused,viewMode,depth:P.depth,flow:P.flow,current:currentRiverConditions(),nodes:nodes.map(n=>({type:n.type,p:n.p.toArray(),contact:n.contact})),renderer:world.stats(),assets:world.assetsReady}),setView};
 // Development-only fixtures exercise the real result UI without changing bite odds.
 if(import.meta.env.DEV){
+  window.__river.auditGauge=()=>gaugeEls.map(g=>({index:nodes.indexOf(g.it.n),text:g.val.textContent,clearance:g.it.n.p.y-bed(g.it.n.p.x,g.it.n.p.z)-g.it.n.r,displayed:Number(g.val.dataset.clearance),top:g.mk.style.top}));
+  window.__river.auditBed=()=>({physics:PROCKS.map(p=>({...p})),...world.inspectBed(),big:BOULDERS.map(b=>({...b,expected:bed(b.x,b.z)+b.r*1.35,visible:world.probeBed(b.x,b.z)[0]}))});
+  window.__river.inspectAt=(x,z=0)=>{paused=true;camX=x;camY=bed(x,z)+.55;follow=false;viewMode='underwater';yaw=tYaw=0;pitch=tPitch=.06;dist=tDist=2.8;};
   window.__river.previewCatch=(species='baijia')=>{const f=FISH.find(f=>f.sp===species)||{...FISH[0],sp:species,size:32},b=M,w=waterVel(b.p.x,b.p.y,b.p.z,simT);doBite({f,b,q:.83,sub:{窗口:.93,离底:.88,同速:.92,垂直:.81,顿挫:.78,拖底:.87,警觉:1,开口:1},off:b.p.y-bed(b.p.x,b.p.z)-b.r,lead:P.mode==='euro'?rodTip.x-b.p.x:b.p.x-F.p.x,ws:w.x,bv:b.v.x});};
   window.__river.previewDriftEnd=showEuroDriftEnd;
   window.__river.fishPoses=()=>fishMeshes.map(g=>({position:g.position.toArray(),yaw:g.rotation.y,phase:g.userData.phase,amplitude:g.userData.uniforms.fishAmplitude.value}));

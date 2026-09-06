@@ -30,7 +30,7 @@ async function model(id,ratio){
 }
 async function texture(id,label){const m=await metadata(id);for(const [key,suffix] of [['Diffuse','color'],['nor_gl','normal'],['Rough','rough']]){const file=m[key]?.['1k']?.jpg;if(!file)continue;const p=path.join(cache,`${id}-${suffix}.jpg`);await get(file.url,p);await sharp(p).webp({quality:suffix==='normal'?92:86}).toFile(path.join(out,`${label}-${suffix}.webp`));}
   credits.push({id,type:'texture',source:`https://polyhaven.com/a/${id}`,license:'CC0-1.0',file:`${label}-*.webp`});}
-await Promise.all([texture('river_small_rocks','pebbles'),texture('forest_ground_04','soil'),texture('rock_pitted_mossy','stone'),texture('brown_mud_02','sand')]);
+await Promise.all([texture('river_small_rocks','pebbles'),texture('forest_ground_04','soil'),texture('rock_pitted_mossy','stone'),texture('damp_beach_sand_02','sand')]);
 for(const [id,ratio] of [['rock_moss_set_01',.8],['rock_09',.8],['fern_02',.8],['shrub_01',.22],['tree_small_02',.065],['grass_bermuda_01',1]])await model(id,ratio);
 const grassMeta=await metadata('grass_bermuda_01');await get(grassMeta.Alpha['1k'].png.url,path.join(out,'grass-alpha.png'));
 const envId='kloofendal_48d_partly_cloudy_puresky',env=await metadata(envId);
