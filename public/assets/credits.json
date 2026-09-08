@@ -77,6 +77,22 @@
       "source": "https://polyhaven.com/a/kloofendal_48d_partly_cloudy_puresky",
       "license": "CC0-1.0",
       "file": "daylight.hdr"
+    },
+    {
+      "id": "tree_small_02",
+      "type": "model",
+      "source": "https://polyhaven.com/a/tree_small_02",
+      "license": "CC0-1.0",
+      "file": "tree_small_02-riparian-lod.glb",
+      "derivative": "Reduced geometry for clustered riparian vegetation; original model retained."
+    },
+    {
+      "id": "shrub_01",
+      "type": "model",
+      "source": "https://polyhaven.com/a/shrub_01",
+      "license": "CC0-1.0",
+      "file": "shrub_01-riparian-lod.glb",
+      "derivative": "Reduced geometry for clustered riparian vegetation; original model retained."
     }
   ],
   "files": {
@@ -159,6 +175,14 @@
     "tree_small_02.glb": {
       "bytes": 8058372,
       "sha256": "ecdebfd6b1858b4c5e5aafe73f461c9af94a512dc8114ce1a149c05c5e5cecaf"
+    },
+    "tree_small_02-riparian-lod.glb": {
+      "bytes": 2626492,
+      "sha256": "496186efa60dae42a6c569dd83e2bf3556c87fa3b5389ef9d185c438da2522eb"
+    },
+    "shrub_01-riparian-lod.glb": {
+      "bytes": 557380,
+      "sha256": "ebe953a50187e53992114a5615029f5e3b77249bf36baa60648f501f5613450c"
     }
   }
 }

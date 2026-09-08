@@ -7,6 +7,7 @@ import { loadProgress } from './shell.js';
 import { waterAppearance } from './water-effects.js';
 import { makeHydraulicTexture, makeTravelTexture, channelWaves as surfaceWaves } from './channel-surface.js';
 import { makeChannelFoam } from './channel-foam.js';
+import { bankHabitat, bankElevation, makeTussockGeometry, makeFoliageBillboardGeometry, makeBankMaterial } from './riparian.js';
 import { collisionRockPlacements, makeBedGeometry, makeBedMaterial, makeCollisionRockGeometry } from './riverbed-visuals.js';
 
 const A='/assets/';
@@ -34,7 +35,7 @@ export async function createRiverWorld({host,P,bed,zoneAt,channel}){
     const t=await loader.loadAsync(`${A}${id}-${type}.webp`);t.wrapS=t.wrapT=THREE.RepeatWrapping;t.anisotropy=Math.min(8,renderer.capabilities.getMaxAnisotropy());if(type==='color')t.colorSpace=THREE.SRGBColorSpace;textures[`${id}-${type}`]=t;
   }));
   textureJobs.push(loader.loadAsync(A+'grass-alpha.png').then(t=>{t.flipY=false;textures.grassAlpha=t;}));
-  const modelIds=['rock_moss_set_01','rock_09','fern_02','shrub_01','tree_small_02','grass_bermuda_01'];
+  const modelIds=['rock_moss_set_01','rock_09','fern_02','shrub_01-riparian-lod','tree_small_02-riparian-lod','grass_bermuda_01'];
   const [env,...models]=await Promise.all([new RGBELoader(manager).loadAsync(A+'daylight.hdr'),...modelIds.map(id=>gltf.loadAsync(A+id+'.glb')),...textureJobs]);
   env.mapping=THREE.EquirectangularReflectionMapping;scene.environment=env;scene.background=env;scene.environmentIntensity=.64;scene.backgroundIntensity=.72;
   scene.backgroundRotation.y=.6;scene.environmentRotation.y=.6;
@@ -66,44 +67,52 @@ export async function createRiverWorld({host,P,bed,zoneAt,channel}){
   function normalizedParts(root,{height=false,separate=false}={}){
     root.updateMatrixWorld(true);const box=new THREE.Box3().setFromObject(root),size=box.getSize(new THREE.Vector3()),center=box.getCenter(new THREE.Vector3());const scale=1/(height?size.y:Math.max(size.x,size.y,size.z));const parts=[];
     root.traverse(obj=>{if(!obj.isMesh)return;const geometry=obj.geometry.clone().applyMatrix4(obj.matrixWorld);
-      if(separate){geometry.computeBoundingBox();const b=geometry.boundingBox,c=b.getCenter(new THREE.Vector3()),s=b.getSize(new THREE.Vector3()),f=1/Math.max(s.x,s.y,s.z);geometry.translate(-c.x,-b.min.y,-c.z);geometry.scale(f,f,f);}else{geometry.translate(-center.x,-box.min.y,-center.z);geometry.scale(scale,scale,scale);}
+      if(separate){geometry.computeBoundingBox();const b=geometry.boundingBox,c=b.getCenter(new THREE.Vector3()),s=b.getSize(new THREE.Vector3()),f=1/(height?s.y:Math.max(s.x,s.y,s.z));geometry.translate(-c.x,-b.min.y,-c.z);geometry.scale(f,f,f);}else{geometry.translate(-center.x,-box.min.y,-center.z);geometry.scale(scale,scale,scale);}
       const material=obj.material.clone();material.envMapIntensity=.75;material.roughness=Math.max(.55,material.roughness);material.side=THREE.DoubleSide;submerge(material);materialSet.add(material);geometrySet.add(geometry);parts.push({geometry,material});
     });return parts;
   }
-  const assets={rock:normalizedParts(models[0].scene,{separate:true}),stone:normalizedParts(models[1].scene),fern:normalizedParts(models[2].scene,{height:true}),shrub:normalizedParts(models[3].scene,{height:true}),tree:normalizedParts(models[4].scene,{height:true}),grass:normalizedParts(models[5].scene,{separate:true})};
+  const assets={rock:normalizedParts(models[0].scene,{separate:true}),stone:normalizedParts(models[1].scene),fern:normalizedParts(models[2].scene,{height:true,separate:true}),shrub:normalizedParts(models[3].scene,{height:true}),tree:normalizedParts(models[4].scene,{height:true}),grass:normalizedParts(models[5].scene,{separate:true})};
   const landscape=new THREE.Group();scene.add(landscape);
   function instances(parts,placements,parent=landscape,{shadows=true}={}){
     const chunks=new Map();for(const p of placements){const key=Math.floor(p.x/20);if(!chunks.has(key))chunks.set(key,[]);chunks.get(key).push(p);}
     return [...chunks.values()].flatMap(rows=>parts.map(({geometry,material})=>{const mesh=new THREE.InstancedMesh(geometry,material,rows.length),dummy=new THREE.Object3D();rows.forEach((p,i)=>{dummy.position.set(p.x,p.y,p.z);dummy.rotation.set(p.rx||0,p.rot||0,p.rz||0);dummy.scale.set(p.sx||p.s,p.sy||p.s,p.sz||p.s);dummy.updateMatrix();mesh.setMatrixAt(i,dummy.matrix);if(p.color!==undefined)mesh.setColorAt(i,new THREE.Color(p.color));});if(parent===landscape)mesh.userData.shoreRows=rows.map(p=>{const side=Math.sign(p.z-channel.section(p.x).center);return {x:p.x,side,margin:Math.abs(p.z-channel.bank(p.x,side)),offset:p.y-shoreHeight(p.x,p.z)};});mesh.castShadow=mesh.receiveShadow=shadows;mesh.computeBoundingSphere();parent.add(mesh);return mesh;}));
   }
   function shoreZ(x,z){return channel.bank(x,Math.sign(z))+Math.sign(z)*(Math.abs(z)-5.5);}
-  function shoreHeight(x,z){const s=channel.section(x),d=Math.abs(z-s.center)-s.halfWidth;
-    if(d<=0)return bed(x,z)-.012;
-    return d*.15+.14*Math.sin(x*.23+z*.37)*THREE.MathUtils.smoothstep(d,0,2)+.055*Math.sin(x*.82-z*.54)*THREE.MathUtils.smoothstep(d,0,1);}
+  function shoreHeight(x,z){return bankElevation(channel,bed,x,z);}
   const terrainParts=[];
   function makeBanks(){
     for(const side of [-1,1]){
       const geo=new THREE.PlaneGeometry(232,55,928,56);geo.rotateX(-Math.PI/2);const a=geo.attributes.position,uv=geo.attributes.uv;
-      const colors=[],margins=[];for(let i=0;i<a.count;i++){const x=a.getX(i)+78,margin=a.getZ(i)+27.38,z=channel.bank(x,side)+side*margin,y=shoreHeight(x,z);margins.push(margin);a.setXYZ(i,x,y,z);uv.setXY(i,x*.34,z*.34);const near=THREE.MathUtils.smoothstep(margin,0,7);const c=new THREE.Color().setRGB(1-near*.24,1-near*.16,1-near*.30);colors.push(c.r,c.g,c.b);}if(side<0){const idx=geo.index.array;for(let i=0;i<idx.length;i+=3){const k=idx[i+1];idx[i+1]=idx[i+2];idx[i+2]=k;}}geo.setAttribute('color',new THREE.Float32BufferAttribute(colors,3));geo.computeVertexNormals();const m=pbr('soil',{vertexColors:true,normalScale:new THREE.Vector2(1,1)});const mesh=new THREE.Mesh(geo,m);mesh.userData={margins,side};mesh.receiveShadow=true;landscape.add(mesh);terrainParts.push(mesh);
+      const habitat=[],margins=[];for(let i=0;i<a.count;i++){const x=a.getX(i)+78,margin=a.getZ(i)+27.38,z=channel.bank(x,side)+side*margin,y=shoreHeight(x,z);margins.push(margin);a.setXYZ(i,x,y,z);uv.setXY(i,x*.85,z*.85);habitat.push(margin,bankHabitat(x,side).bar);}if(side<0){const idx=geo.index.array;for(let i=0;i<idx.length;i+=3){const k=idx[i+1];idx[i+1]=idx[i+2];idx[i+2]=k;}}geo.setAttribute('bankData',new THREE.Float32BufferAttribute(habitat,2));geo.computeVertexNormals();const m=makeBankMaterial(textures,submerge);materialSet.add(m);const mesh=new THREE.Mesh(geo,m);mesh.userData={margins,side};mesh.receiveShadow=true;landscape.add(mesh);terrainParts.push(mesh);
     }
   }
   makeBanks();
   const rnd=seeded(18237),rockRows=assets.rock.map(()=>[]);
-  for(let i=0;i<190;i++){const x=-25+rnd()*218,side=i%2?1:-1,z=shoreZ(x,side*(5.6+rnd()*4)),s=.3+Math.pow(rnd(),2)*1.9;rockRows[i%rockRows.length].push({x,y:shoreHeight(x,z)-s*.15,z,s,rot:rnd()*Math.PI*2});}
+  for(let i=0;i<660;i++){const x=-25+rnd()*218,side=i%2?1:-1,h=bankHabitat(x,side),z=channel.bank(x,side)+side*(.05+rnd()*(h.bar+1)),s=.16+Math.pow(rnd(),3)*1.6;rockRows[i%rockRows.length].push({x,y:shoreHeight(x,z)-s*.26,z,s,rot:rnd()*Math.PI*2,color:0xb9c1a1});}
   rockRows.forEach((rows,i)=>instances([assets.rock[i]],rows));
+  // Flood-stranded woody fragments sit beyond the wet edge, not in the fishing lane.
+  const woodGeo=new THREE.CylinderGeometry(.055,.085,1,9,3);woodGeo.rotateZ(Math.PI/2);woodGeo.translate(0,.04,0);geometrySet.add(woodGeo);
+  const woodMat=pbr('soil',{color:0x625541,normalScale:new THREE.Vector2(.4,.8),roughness:1}),woodRows=[];
+  for(let i=0;i<32;i++){const x=-20+rnd()*210,side=i%2?1:-1,h=bankHabitat(x,side),z=channel.bank(x,side)+side*(h.bar+.6+rnd()*1.4);woodRows.push({x,y:shoreHeight(x,z)-.035,z,s:1,sx:1.1+rnd()*2.5,sy:.5+rnd()*.8,sz:.5+rnd()*.8,rot:(rnd()-.5)*1.0});}
+  instances([{geometry:woodGeo,material:woodMat}],woodRows);
   const fernRows=[],bushRows=[],treeRows=[];
-  const grassRows=assets.grass.map(()=>[]);
-  for(let i=0;i<3400;i++){const x=-26+rnd()*208,z=shoreZ(x,(i%2?1:-1)*(7+rnd()*9));if(Math.sin(x*.35+z*.8)+Math.sin(z*1.4)<-.5)continue;grassRows[i%grassRows.length].push({x,y:shoreHeight(x,z)-.025,z,s:.25+rnd()*.45,rot:rnd()*6.28});}
-  grassRows.forEach((rows,i)=>{assets.grass[i].material.alphaTest=.4;assets.grass[i].material.alphaMap=textures.grassAlpha;assets.grass[i].material.transparent=false;instances([assets.grass[i]],rows,landscape,{shadows:false});});
-  for(let i=0;i<44;i++){const x=-18+rnd()*125,z=shoreZ(x,(i%2?1:-1)*(6.5+rnd()*5));fernRows.push({x,y:shoreHeight(x,z)-.03,z,s:.35+rnd()*.8,rot:rnd()*6.28});}instances(assets.fern,fernRows);
-  for(let i=0;i<10;i++){const x=-12+rnd()*70,z=shoreZ(x,(i%2?1:-1)*(8+rnd()*5));bushRows.push({x,y:shoreHeight(x,z),z,s:.9+rnd()*.9,rot:rnd()*6.28});}instances(assets.shrub,bushRows);
-  for(let i=0;i<10;i++){const x=-16+i*8+rnd()*4,z=shoreZ(x,(i%2?1:-1)*(10+rnd()*6));treeRows.push({x,y:shoreHeight(x,z),z,s:5+rnd()*4,rot:rnd()*6.28});}const treeMeshes=instances(assets.tree,treeRows);
+  const grassRows=[[],[],[]],grassMat=new THREE.MeshStandardMaterial({vertexColors:true,side:THREE.DoubleSide,roughness:.95});submerge(grassMat);materialSet.add(grassMat);
+  for(let i=0;i<19000;i++){
+    const x=-26+rnd()*218,side=i%2?1:-1,h=bankHabitat(x,side),margin=h.bar+.05+Math.pow(rnd(),1.6)*10.5,z=channel.bank(x,side)+side*margin,hab=bankHabitat(x,side,margin);
+    if(rnd()>hab.cover||rnd()<hab.forest*.24)continue;
+    const s=(.45+rnd()*.68)*(1-hab.forest*.32),eps=.15;
+    grassRows[i%3].push({x,y:shoreHeight(x,z)-.045,z,s,rot:rnd()*6.28,rx:-Math.atan((shoreHeight(x,z+eps)-shoreHeight(x,z-eps))/(2*eps)),rz:Math.atan((shoreHeight(x+eps,z)-shoreHeight(x-eps,z))/(2*eps))});
+  }
+  const grassMeshes=grassRows.flatMap((rows,i)=>{const geometry=makeTussockGeometry(731+i*41),low=makeTussockGeometry(731+i*41,8);geometrySet.add(geometry);geometrySet.add(low);const meshes=instances([{geometry,material:grassMat}],rows,landscape,{shadows:false});for(const mesh of meshes){mesh.userData.nearGeometry=geometry;mesh.userData.farGeometry=low;}return meshes;});
+  for(let i=0;i<480;i++){const x=-23+rnd()*214,side=i%2?1:-1,h=bankHabitat(x,side),margin=h.bar+.5+rnd()*6;if(h.patch<.3&&rnd()<.7)continue;const z=channel.bank(x,side)+side*margin;fernRows.push({x,y:shoreHeight(x,z)-.06,z,s:.3+rnd()*.42,rot:rnd()*6.28,color:0xb2c88a});}assets.fern.forEach((p,i)=>instances([p],fernRows.filter((_,j)=>j%assets.fern.length===i)));
+  for(let i=0;i<240;i++){const center=-22+Math.floor(rnd()*36)*6,x=center+(rnd()-.5)*4.8,side=i%2?1:-1,h=bankHabitat(x,side),z=channel.bank(x,side)+side*(h.bar+1.3+rnd()*6.8),s=.9+rnd()*1.35;bushRows.push({x,y:shoreHeight(x,z)-.1,z,s,sx:s*(1+rnd()*.45),sz:s*(1+rnd()*.3),rot:rnd()*6.28,color:new THREE.Color().setHSL(.22+rnd()*.045,.22,.62)});}instances(assets.shrub,bushRows);
+  for(let i=0;i<90;i++){const x=-24+rnd()*218,side=i%2?1:-1,h=bankHabitat(x,side),z=channel.bank(x,side)+side*(h.bar+4.5+rnd()*12),s=5+rnd()*5.5;treeRows.push({x,y:shoreHeight(x,z)-.1,z,s,sx:s*(1.15+rnd()*.35),sz:s*(1.05+rnd()*.3),rot:rnd()*6.28,rz:(rnd()-.5)*.10,color:0xbec8a5});}const treeMeshes=instances(assets.tree,treeRows);
   // Distant vegetation uses a one-time render of the same 3D model as a low-cost impostor.
   function bakeFoliage(parts){const off=new THREE.Scene();off.environment=env;off.environmentIntensity=.8;off.add(new THREE.HemisphereLight(0xdbe8d1,0x4c573a,1));const l=new THREE.DirectionalLight(0xfff0d6,2.5);l.position.set(-3,6,5);off.add(l);for(const p of parts)off.add(new THREE.Mesh(p.geometry,p.material));const c=new THREE.OrthographicCamera(-.65,.65,.6,-.6,.01,10);c.position.set(0,.5,3);c.lookAt(0,.5,0);const rt=new THREE.WebGLRenderTarget(768,768,{generateMipmaps:true,minFilter:THREE.LinearMipmapLinearFilter});const alpha=renderer.getClearAlpha(),color=renderer.getClearColor(new THREE.Color());renderer.setClearColor(0x000000,0);renderer.setRenderTarget(rt);renderer.render(off,c);renderer.setRenderTarget(null);renderer.setClearColor(color,alpha);return rt;}
   const treeSprite=bakeFoliage(assets.tree),bushSprite=bakeFoliage(assets.shrub);
-  function distant(tex,count,isTree){const geo=new THREE.PlaneGeometry(1.3,1.2);geo.translate(0,.55,0);const material=new THREE.MeshBasicMaterial({map:tex,transparent:false,alphaTest:.45,side:THREE.DoubleSide,fog:true,color:isTree?0xd2d9bd:0xe1e5c8});const rows=[];
+  function distant(tex,count,isTree){const geo=makeFoliageBillboardGeometry();const material=new THREE.MeshBasicMaterial({map:tex,transparent:false,alphaTest:.45,side:THREE.DoubleSide,fog:true,color:isTree?0xb0bda0:0xc1cbaa});const rows=[];
     for(let i=0;i<count;i++){const x=-40+rnd()*240,z=shoreZ(x,(i%2?1:-1)*(isTree?18+rnd()*35:9+rnd()*12));rows.push({x,y:shoreHeight(x,z),z,s:isTree?7+rnd()*8:1+rnd()*2,rot:(rnd()-.5)*.6});}return instances([{geometry:geo,material}],rows,landscape,{shadows:false});}
-  distant(treeSprite.texture,300,true);distant(bushSprite.texture,180,false);
+  distant(treeSprite.texture,620,true);distant(bushSprite.texture,780,false);
   const bedGroup=new THREE.Group();scene.add(bedGroup);let terrainMesh=null,bedGeometries=[];
   const bedMat=makeBedMaterial(textures,submerge);materialSet.add(bedMat);
   const pebbleGeo=makeCollisionRockGeometry(),boulderGeo=makeCollisionRockGeometry(true);
@@ -165,6 +174,7 @@ export async function createRiverWorld({host,P,bed,zoneAt,channel}){
   const spray=new THREE.Points(sprayGeo,sprayMat);spray.frustumCulled=false;scene.add(spray);
   let frameCount=0,quality='balanced',lastWaterTime=0,waterTravel=0,appearance=waterAppearance(1);const underwaterBackground=new THREE.Color(0x214a40);
   function update({time,flow,x,dt}){timeUniform.value=time;waterMat.uniforms.uFlow.value=flow;
+    for(const mesh of grassMeshes)mesh.geometry=camera.position.distanceTo(mesh.boundingSphere.center)>(quality==='high'?48:30)?mesh.userData.farGeometry:mesh.userData.nearGeometry;
     if(time<lastWaterTime)waterTravel=0;else waterTravel+=Math.max(0,time-lastWaterTime)*flow*.9;lastWaterTime=time;
     appearance=waterAppearance(flow);waterMat.uniforms.uTravel.value=waterTravel;waterMat.uniforms.uEnergy.value=appearance.energy;waterMat.uniforms.uWaveAmplitude.value=appearance.waveAmplitude;
     surfaceFoam.update(time,x,camera.position.y>.02&&nature.value>.5,renderer.domElement.height);
@@ -193,5 +203,6 @@ export async function createRiverWorld({host,P,bed,zoneAt,channel}){
   function stats(){return{calls:renderer.info.render.calls,triangles:renderer.info.render.triangles,geometries:renderer.info.memory.geometries,textures:renderer.info.memory.textures,quality,frames:frameCount,water:{...appearance,travel:waterTravel,local:channel.column(camera.position.x,0),discharge:channel.discharge()},programErrors:renderer.info.programs.filter(p=>p.diagnostics?.runnable===false).length};}
   function inspectBed(){return {placements:bedPlacements,geometryVertices:terrainMesh.geometry.attributes.position.count};}
   function probeBed(x,z){scene.updateMatrixWorld(true);const ray=new THREE.Raycaster(new THREE.Vector3(x,8,z),new THREE.Vector3(0,-1,0));return ray.intersectObject(bedGroup,true).map(h=>({y:h.point.y,name:h.object.name||'terrain'}));}
-  return {scene,camera,renderer,nature,buildBed,submerge,update,render,resize,setQuality,stats,inspectBed,probeBed,assetsReady:true};
+  function inspectShore(){let count=0,maxRootError=0,minMargin=Infinity;const matrix=new THREE.Matrix4();landscape.traverse(mesh=>{for(const [i,p] of (mesh.userData.shoreRows||[]).entries()){mesh.getMatrixAt(i,matrix);const z=channel.bank(p.x,p.side)+p.side*p.margin;maxRootError=Math.max(maxRootError,Math.abs(matrix.elements[13]-shoreHeight(p.x,z)-p.offset),Math.abs(matrix.elements[14]-z));minMargin=Math.min(minMargin,p.margin);count++;}});return {count,maxRootError,minMargin,grass:grassRows.reduce((n,r)=>n+r.length,0),shrubs:bushRows.length,trees:treeRows.length,ferns:fernRows.length};}
+  return {scene,camera,renderer,nature,buildBed,submerge,update,render,resize,setQuality,stats,inspectBed,probeBed,inspectShore,assetsReady:true};
 }

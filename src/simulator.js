@@ -1105,6 +1105,7 @@ finishLoading();requestAnimationFrame(frame);
 window.__river={getState:()=>({mode:P.mode,phase,time:simT,paused,viewMode,depth:P.depth,flow:P.flow,current:currentRiverConditions(),nodes:nodes.map(n=>({type:n.type,p:n.p.toArray(),contact:n.contact})),renderer:world.stats(),assets:world.assetsReady}),setView};
 // Development-only fixtures exercise the real result UI without changing bite odds.
 if(import.meta.env.DEV){
+  window.__river.auditShore=()=>world.inspectShore();
   window.__river.channelAt=(x,z=0)=>({section:channel.section(x),bed:bed(x,z),column:channel.column(x,z),surface:waterVel(x,-.01,z,simT),discharge:channel.discharge()});
   window.__river.inspectReach=(x=12,mode='landscape')=>{setView(mode);paused=true;follow=false;camX=x;camY=mode==='underwater'?bed(x,0)+.55:.05;yaw=tYaw;pitch=tPitch;dist=tDist;};
   window.__river.auditBaits=()=>[...visMap].filter(([n])=>n.type==='bait').map(([n,m])=>({kind:n.bt,index:nodes.indexOf(n),anchor:m.position.distanceTo(n.p),angle:m.rotation.z,time:m.userData.uniforms.baitTime.value,parts:m.children.map(x=>x.name),scale:m.scale.x}));
