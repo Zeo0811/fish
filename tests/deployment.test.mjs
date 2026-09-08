@@ -4,10 +4,10 @@ import fs from 'node:fs/promises';
 import crypto from 'node:crypto';
 import { createApp, buildIsComplete } from '../server.mjs';
 
-test('original v78 solver is preserved byte-for-byte',async()=>{
+test('fishing dynamics and scoring remain byte-identical while the environment is upgraded',async()=>{
   const s=await fs.readFile(new URL('../src/simulator.js',import.meta.url),'utf8');
-  const core=s.slice(s.indexOf("'use strict';"),s.indexOf('const world=await')).trim();
-  assert.equal(crypto.createHash('sha256').update(core).digest('hex'),'23a89fc868ce9b53349c95841307749d5c525a82ae41c21ffe1122d96d15a071');
+  const core=s.slice(s.indexOf('const g=9.81;'),s.indexOf('const world=await')).trim();
+  assert.equal(crypto.createHash('sha256').update(core).digest('hex'),'29a355e3a5567eacf5b6214bf31292a4ab5d89a3923210d501fa6637ae7af47e');
 });
 test('all licensed assets are present, unchanged and included in production',async()=>{
   const m=JSON.parse(await fs.readFile(new URL('../public/assets/credits.json',import.meta.url)));

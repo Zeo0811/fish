@@ -9,14 +9,22 @@ export function collisionRockPlacements(items, boulders, bed, zoneAt) {
   ];
 }
 
-export function makeBedGeometry(bed,zoneAt){
+export function makeBedGeometry(bed,zoneAt,channel){
   const geo=new THREE.PlaneGeometry(260,9,1734,60);geo.rotateX(-Math.PI/2);
   const a=geo.attributes.position,uv=geo.attributes.uv,weightsA=[],weightsB=[];
   for(let i=0;i<a.count;i++){
-    const x=a.getX(i)+78,z=a.getZ(i),t=zoneAt(x).t;
+    const x=a.getX(i)+78,s=channel?.section(x),z=s?s.center+a.getZ(i)/4.5*s.halfWidth:a.getZ(i),t=zoneAt(x).t;
     a.setXYZ(i,x,bed(x,z),z);uv.setXY(i,x,z);
-    weightsA.push(t===0?1:0,t===1?1:0,t===2||t===3?1:0);
-    weightsB.push(t===4?1:0,t===5?1:0,0);
+    if(channel){
+      // Offset and soften substrate boundaries so they are not straight painted
+      // stripes across a natural cross-section. Uniform substrate remains uniform.
+      const weights=[0,0,0,0,0,0],shift=.55*Math.sin(z*1.8)+.35*Math.sin(x*.8+z);
+      for(let j=-3;j<=3;j++){const type=zoneAt(x+shift+j*.35).t;weights[type]+=1/7;}
+      weightsA.push(weights[0],weights[1],weights[2]+weights[3]);weightsB.push(weights[4],weights[5],0);
+    }else{
+      weightsA.push(t===0?1:0,t===1?1:0,t===2||t===3?1:0);
+      weightsB.push(t===4?1:0,t===5?1:0,0);
+    }
   }
   geo.setAttribute('bedA',new THREE.Float32BufferAttribute(weightsA,3));
   geo.setAttribute('bedB',new THREE.Float32BufferAttribute(weightsB,3));

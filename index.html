@@ -62,9 +62,11 @@
   <div class="s"><select id="bedType" style="width:100%;font:inherit;font-size:12px;padding:5px;border:1px solid var(--rule);border-radius:4px;background:#fff">
     <option value="mixed">混合分区（每 62 m 循环）</option><option value="rubble">密集碎石（全程）</option><option value="cobble">卵石（全程）</option><option value="boulder">卵石 + 大石（全程）</option><option value="gravel">砾石（全程）</option><option value="sand">沙底（全程）</option><option value="bedrock">基岩板（全程）</option></select></div>
   <h2>河流</h2>
-  <div class="btns" style="margin-top:0"><button id="bFlat" class="ghost">水深恒定（河床不起伏）</button></div>
+  <div class="s"><label for="reachJump">前往河段并抛投</label><select id="reachJump" style="width:100%;font:inherit;font-size:12px;padding:5px;border:1px solid var(--rule);border-radius:4px;background:#fff">
+    <option value="">选择河段…</option><option value="1.2">宽河缓流</option><option value="5">宽 → 窄 · 急流入口</option><option value="9">收窄急流 · 驻波</option><option value="17">冲刷潭头 · 两侧回流</option><option value="25">宽潭 · 深槽</option><option value="38">潭尾 · tailout</option><option value="44">卵石浅急滩</option><option value="49">浅滩后顺流</option></select></div>
+  <div class="btns" style="margin-top:0"><button id="bFlat" class="ghost">等宽等深对照（关闭河型起伏）</button></div>
   <div class="s"><label>基准水深 <span id="depthHint" style="color:var(--ink2)">（DIY 后 = 漂→最下铅）</span><b id="vDepth">1.50 m</b></label><input type="range" id="depth" min="0.8" max="3.2" step="0.01" value="1.5"></div>
-  <div class="s"><label>表层流速 <span id="vRegime" style="color:var(--water)">中流</span><b id="vFlow">1.0 m/s</b></label><input type="range" id="flow" min="0.3" max="2.5" step="0.05" value="1.0"></div>
+  <div class="s"><label>上游基准平均流速 <span id="vRegime" style="color:var(--water)">中流</span><b id="vFlow">1.0 m/s</b></label><input type="range" id="flow" min="0.3" max="2.5" step="0.05" value="1.0"></div>
   <div id="cpPanel">
   <h2>holding back</h2>
   <div class="btns" style="margin-top:0"><button id="bAuto" class="ghost">完美演示：自动调 holding back</button></div>

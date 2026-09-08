@@ -1,5 +1,6 @@
 import * as THREE from 'three';
 import { createRiverWorld } from './world.js';
+import { createChannel } from './channel.js';
 import { makeRiverFish, updateRiverFish, disposeRiverFish, fishPortrait } from './fish-visuals.js';
 import { renderCatchReport } from './catch-view.js';
 import { setupDialogFocus } from './dialogs.js';
@@ -22,17 +23,18 @@ const ZONE_MU={0:0.35,1:0.55,2:0.45,3:0.50,4:0.50,5:0.65};   // 沙/砾石/卵�
 const PERIOD=62;
 const MIX=[
  {x0:-8, x1:2,  t:1, name:'砾石浅滩'},
- {x0:2,  x1:11, t:3, name:'大石区 · 石后回水'},
- {x0:11, x1:18, t:0, name:'沙底缓段'},
- {x0:18, x1:22, t:2, name:'卵石陡坎（深浅交界）'},
+ {x0:2,  x1:11, t:3, name:'收窄急流 · 大石区'},
+ {x0:11, x1:18, t:2, name:'急流出口 · 冲刷潭头'},
+ {x0:18, x1:22, t:0, name:'潭侧沙洲'},
  {x0:22, x1:34, t:4, name:'深槽 · 基岩粗砾'},
- {x0:34, x1:42, t:5, name:'密集碎石滩'},
+ {x0:34, x1:42, t:1, name:'潭尾 · 砾石过渡'},
  {x0:42, x1:48, t:2, name:'卵石急滩'},
  {x0:48, x1:54, t:1, name:'砾石段'},
 ];
 let BEDTYPE='mixed';let FLAT=false;   // 水深恒定：河床不起伏，只保留底质微粗糙
 const SINGLE_NAME={sand:'沙底（全程）',gravel:'砾石（全程）',rubble:'密集碎石（全程）',cobble:'卵石（全程）',boulder:'卵石+大石（全程）',bedrock:'基岩板（全程）'};
 const SINGLE_T={sand:0,gravel:1,rubble:5,cobble:2,boulder:3,bedrock:4};
+const channel=createChannel(P,()=>({flat:FLAT,substrate:BEDTYPE}),zoneAt);
 function xm(x){return ((x+8)%PERIOD+PERIOD)%PERIOD-8;}
 function zoneAt(x){ if(BEDTYPE!=='mixed'){const t=SINGLE_T[BEDTYPE];return {t,name:SINGLE_NAME[BEDTYPE],mu:ZONE_MU[t]};}
   const m=xm(x);for(const z of MIX)if(m>=z.x0&&m<z.x1)return {t:z.t,name:z.name,mu:ZONE_MU[z.t]};return {t:1,name:'砾石段',mu:0.45};}
@@ -46,25 +48,13 @@ genBoulders();
 function sm(a,b,x){const t=Math.min(1,Math.max(0,(x-a)/(b-a)));return t*t*(3-2*t);}
 function n2(x,z){return Math.sin(x*1.7+z*2.3)*Math.cos(x*0.6-z*1.1)+0.5*Math.sin(x*4.1+z*3.7);}
 function bed(x,z){
-  let y;
-  if(FLAT)y=-P.depth;
-  else if(BEDTYPE==='mixed'){const m=xm(x);const prof=1+0.85*sm(18,22,m)-0.6*sm(33,36,m);y=-P.depth*prof;}
-  else y=-P.depth*(1+0.07*Math.sin(x*0.25)*sm(6,22,x));
-  if(!FLAT)y+=(0.06*Math.sin(x*0.8)+0.04*Math.sin(x*2.1+1.3))*(BEDTYPE==='mixed'?1:sm(6,22,x));
-  const zt=zoneAt(x).t;
-  if(zt===0) y+=0.012*Math.sin(x*14+z*2);
-  if(zt===1) y+=0.02*n2(x*2,z*2);
-  if(zt===2||zt===3) y+=0.05*n2(x*1.5,z*1.5);
-  if(zt===4) y+=0.08*Math.max(0,Math.sin(x*1.3))+0.03*n2(x,z);
-  if(zt===5) y+=0.045*n2(x*3,z*3);
-  y+=0.2*Math.max(0,Math.abs(z)-2.6);
-  return y;
+  return channel.bed(x,z);
 }
 /* 碰撞石：网格索引 */
 const PROCKS=[]; const GRID=new Map(); const CELL=0.5;
 function gkey(cx,cz){return cx*1000+cz;}
 function addRock(r){ PROCKS.push(r); const cx=Math.floor(r.x/CELL), cz=Math.floor(r.z/CELL);
-  for(let i=-1;i<=1;i++)for(let j=-1;j<=1;j++){const k=gkey(cx+i,cz+j); if(!GRID.has(k))GRID.set(k,[]); GRID.get(k).push(r);} }
+  const reach=Math.ceil((r.r+.08)/CELL);for(let i=-reach;i<=reach;i++)for(let j=-reach;j<=reach;j++){const k=gkey(cx+i,cz+j); if(!GRID.has(k))GRID.set(k,[]); GRID.get(k).push(r);} }
 function rocksNear(x,z){ return GRID.get(gkey(Math.floor(x/CELL),Math.floor(z/CELL)))||[]; }
 
 /* ================= 流速场 ================= */
@@ -72,19 +62,13 @@ function waterVelAt(x,y,z,t,r){return waterVel(x,y+(r||0)*1.2,z,t);}
 function waterVel(x,y,z,t){
   const b=bed(x,z), h=-b, hy=y-b;
   if(hy<=0||y>0.05) return {x:0,y:0};
-  const zt=zoneAt(x).t;const z0=(zt===0?0.006:zt===5?0.04:zt>=2?0.03:0.015)*h;   // 粗糙度随底质
-  const fLog=Math.max(0,Math.log(Math.max(hy,z0)/z0)/Math.log(h/z0));
-  // 真实粗糙河床：近底并非静止，石缝间/湍流交换仍有可观流速（越粗糙下限越高）
-  const fMin=(zt===0?0.13:zt===5?0.32:zt>=2?0.27:0.20);              // 近底仍保留约表层 13–32% 的有效流速
-  const f=fMin+(1-fMin)*fLog;
-  let u=P.flow*f*Math.pow(P.depth/h,0.45), v=0;
+  const local=channel.velocity(x,y,z,t);let u=local.x,v=local.y;
   for(const B of BOULDERS){
     const dx=x-B.x, dz=z-B.z, cy=bed(B.x,B.z)+B.r*0.35, dy=y-cy;
     if(dx>0&&dx<B.r*4.5&&Math.abs(dz)<B.r*1.3&&dy<B.r*1.2){ const k=(1-dx/(B.r*4.5))*(1-Math.abs(dz)/(B.r*1.3))*(1-Math.max(0,dy)/(B.r*1.2)); u*=1-0.85*k; v+=0.15*P.flow*k*Math.sin(t*3+x); }
     if(dx>-B.r*1.2&&dx<0&&Math.abs(dz)<B.r&&dy<B.r*1.1){ v+=0.35*P.flow*(1+dx/(B.r*1.2)); }
   }
-  const tb=0.06*P.flow; u+=tb*Math.sin(x*3.1+t*2.2)*Math.cos(y*4+t*1.3); v+=tb*0.5*Math.sin(x*2.3-t*1.7)*Math.sin(y*3.3+z);
-  return {x:u,y:v};
+  return {x:u,y:v,z:local.z};
 }
 
 /* ================= 物理 ================= */
@@ -702,7 +686,7 @@ function doBite(rec){biteInfo=rec;phase='bite';paused=true;setPhase();rec.mode=P
   rec.refX=P.mode==='euro'?rodTip.x:F.p.x;rec.hb=P.hb;rec.leadRate=P.lead;rec.tension=EURO?EURO.tension:0;rec.belly=EURO?EURO.slack:0;rec.tilt=floatTilt();rec.floatOut=Math.max(0,FT.p.y);bitePending=rec;}
 
 /* ================= 渲染 ================= */
-const world=await createRiverWorld({host:$('view'),P,bed,zoneAt});
+const world=await createRiverWorld({host:$('view'),P,bed,zoneAt,channel});
 const {scene,camera,renderer}=world;
 const skyTex=scene.environment;
 const nature=world.nature;
@@ -716,7 +700,8 @@ function buildBed(){
     const zn=zoneAt(x),t=zn.t;
     let tries=t===5?12:t===2?4:t===3?3:t===4?1:t===1?1.5:0;
     tries=Math.round(tries*(0.7+rnd()*0.6));
-    for(let i=0;i<tries;i++){let z=(rnd()-0.5)*BED_W*0.92;if(t===5&&rnd()<0.6)z=(rnd()-0.5)*3.2;
+    const section=channel.section(x);
+    for(let i=0;i<tries;i++){let z=section.center+(rnd()-.5)*section.halfWidth*1.84;if(t===5&&rnd()<0.6)z=(rnd()-0.5)*3.2;
       let r;if(t===5)r=0.03+rnd()*rnd()*0.10;else if(t===2)r=0.05+rnd()*rnd()*0.28;else if(t===3)r=0.05+rnd()*rnd()*0.24;else if(t===4)r=0.05+rnd()*0.15;else r=0.025+rnd()*rnd()*0.08;
       const xx=x+rnd()*0.1;const y=bed(xx,z)+r*0.35;
       items.push({x:xx,y,z,r,rot:rnd()*6,sx:1+(rnd()-.5)*.5,sz:1+(rnd()-.5)*.5,tint:0.75+rnd()*0.5});}
@@ -739,7 +724,7 @@ scene.add(new THREE.LineSegments(wakeGeo,new THREE.LineBasicMaterial({color:0xff
 const NP=1000;const pGeo=new THREE.BufferGeometry();const pPos=new Float32Array(NP*3),pCol=new Float32Array(NP*3);
 pGeo.setAttribute('position',new THREE.BufferAttribute(pPos,3));pGeo.setAttribute('color',new THREE.BufferAttribute(pCol,3));
 const particles=new THREE.Points(pGeo,new THREE.PointsMaterial({size:0.018,vertexColors:true,transparent:true,opacity:0.45,depthWrite:false}));scene.add(particles);let showParticles=true;
-function respawn(i,cx){const x=cx-14+Math.random()*28,z=(Math.random()-0.5)*BED_W*0.9,b=bed(x,z);pPos[i*3]=x;pPos[i*3+1]=b+Math.random()*(-b-0.02)+0.01;pPos[i*3+2]=z;}
+function respawn(i,cx){const x=cx-14+Math.random()*28,s=channel.section(x),z=s.center+(Math.random()-.5)*s.halfWidth*1.8,b=bed(x,z);pPos[i*3]=x;pPos[i*3+1]=b+Math.random()*(-b-0.02)+0.01;pPos[i*3+2]=z;}
 for(let i=0;i<NP;i++)respawn(i,0);
 
 /* 线组 */
@@ -843,10 +828,10 @@ function buildFishMeshes(){
 let viewMode='bank';let VS=2.5;let yaw=-.55,pitch=.21,dist=8,tYaw=-.55,tPitch=.21,tDist=8,follow=true,camX=1.2,camY=-0.5,drag=false,lx=0,ly=0,pinch=0;
 const dom=renderer.domElement;
 dom.addEventListener('pointerdown',e=>{drag=true;lx=e.clientX;ly=e.clientY;dom.setPointerCapture(e.pointerId);});
-dom.addEventListener('pointermove',e=>{if(!drag)return;tYaw+=(e.clientX-lx)*0.005;tPitch=Math.max(-0.65,Math.min(1.45,tPitch+(e.clientY-ly)*0.004));lx=e.clientX;ly=e.clientY;});
+dom.addEventListener('pointermove',e=>{if(!drag)return;if(e.shiftKey){follow=false;$('bFollow').classList.remove('on');camX=Math.max(-8,Math.min(166,camX-(e.clientX-lx)*dist*.0025));}else{tYaw+=(e.clientX-lx)*0.005;tPitch=Math.max(-0.65,Math.min(1.45,tPitch+(e.clientY-ly)*0.004));}lx=e.clientX;ly=e.clientY;});
 dom.addEventListener('pointerup',()=>drag=false);
-dom.addEventListener('wheel',e=>{e.preventDefault();tDist=Math.max(1.2,Math.min(14,tDist+e.deltaY*0.004));},{passive:false});
-dom.addEventListener('touchmove',e=>{if(e.touches.length===2){const d=Math.hypot(e.touches[0].clientX-e.touches[1].clientX,e.touches[0].clientY-e.touches[1].clientY);if(pinch)tDist=Math.max(1.2,Math.min(14,tDist+(pinch-d)*0.012));pinch=d;}},{passive:true});
+dom.addEventListener('wheel',e=>{e.preventDefault();tDist=Math.max(1.2,Math.min(52,tDist+e.deltaY*0.012));},{passive:false});
+dom.addEventListener('touchmove',e=>{if(e.touches.length===2){const d=Math.hypot(e.touches[0].clientX-e.touches[1].clientX,e.touches[0].clientY-e.touches[1].clientY);if(pinch)tDist=Math.max(1.2,Math.min(52,tDist+(pinch-d)*0.025));pinch=d;}},{passive:true});
 dom.addEventListener('touchend',()=>pinch=0);
 
 /* 深度仪 */
@@ -902,7 +887,7 @@ function buildGauge(){
 function currentRiverConditions(){
   const x=(P.mode==='euro')?M.p.x:F.p.x;
   // Use the same river section and surface sample as the depth instrument.
-  return {x,depth:-bed(x,0),flow:waterVel(x,-0.01,0,simT).x};
+  return {x,depth:-bed(x,0),flow:waterVel(x,-0.01,0,simT).x,width:channel.section(x).halfWidth*2,structure:channel.section(x).name};
 }
 function updateGauge(){
   const current=currentRiverConditions(),refX=current.x;
@@ -951,7 +936,7 @@ function frame(now){try{
   camera.position.set(tgt.x+Math.sin(yaw)*dist*Math.cos(pitch),tgt.y+Math.sin(pitch)*dist+0.25,tgt.z+Math.cos(yaw)*dist*Math.cos(pitch));camera.lookAt(tgt);
 
   world.update({time:simT,flow:P.flow,x:camX,dt});
-  if(showParticles&&!paused){for(let i=0;i<NP;i++){const x=pPos[i*3],y=pPos[i*3+1],z=pPos[i*3+2];const w=waterVel(x,y,z,simT);pPos[i*3]+=w.x*dt;pPos[i*3+1]+=w.y*dt*0.6;
+  if(showParticles&&!paused){for(let i=0;i<NP;i++){const x=pPos[i*3],y=pPos[i*3+1],z=pPos[i*3+2];const w=waterVel(x,y,z,simT);pPos[i*3]+=w.x*dt;pPos[i*3+1]+=w.y*dt*0.6;pPos[i*3+2]+=(w.z||0)*dt;
     if(pPos[i*3]>camX+14||pPos[i*3+1]>-0.01||pPos[i*3+1]<bed(x,z))respawn(i,camX);const s=Math.min(1,w.x/(P.flow*1.1));pCol[i*3]=0.72+0.2*s;pCol[i*3+1]=0.78+0.15*s;pCol[i*3+2]=0.72;}
     pGeo.attributes.position.needsUpdate=true;pGeo.attributes.color.needsUpdate=true;}
   particles.visible=showParticles;
@@ -1092,6 +1077,7 @@ function showBite(rec){
   $('biteWrap').style.display='block';
 }
 $('bFlat').onclick=()=>{FLAT=!FLAT;$('bFlat').classList.toggle('on',FLAT);buildBed();buildRig(F?F.p.x:1.2);};
+$('reachJump').onchange=e=>{if(!e.target.value)return;const x=Number(e.target.value);if(FLAT){FLAT=false;$('bFlat').classList.remove('on');buildBed();}buildRig(x);setView(viewMode);camX=x;e.target.value='';};
 $('bedType').addEventListener('change',e=>{BEDTYPE=e.target.value;buildBed();buildRig(F?F.p.x:1.2);});
 document.querySelectorAll('.castopt').forEach(b=>b.onclick=()=>{P.cast=b.dataset.c;document.querySelectorAll('.castopt').forEach(x=>x.classList.toggle('on',x===b));buildRig();});
 /* 示意图拖拽：上下拖动改距离 */
@@ -1112,13 +1098,15 @@ $('bReset').onclick=()=>{tYaw=0;tPitch=0.15;tDist=2.8;follow=true;$('bFollow').c
 $('vscale').addEventListener('input',e=>{VS=+e.target.value;$('vScale').textContent=VS.toFixed(1)+'×';});
 
 buildBed();buildRig();setNature(true);
-function setView(mode){viewMode=mode;follow=true;$('bFollow').classList.add('on');const presets={bank:[-.55,.21,8],underwater:[.12,.015,2.7],overhead:[-.35,1.18,10],landscape:[-.95,.24,16]};const p=presets[mode]||presets.bank;[tYaw,tPitch,tDist]=p;camY=mode==='underwater'?Math.min(-.75,M.p.y+.1):.05;}
+function setView(mode){viewMode=mode;follow=true;$('bFollow').classList.add('on');const presets={bank:[-.55,.21,8],underwater:[.12,.015,2.7],overhead:[-.35,1.18,28],landscape:[-.95,.53,34]};const p=presets[mode]||presets.bank;[tYaw,tPitch,tDist]=p;camY=mode==='underwater'?Math.min(-.75,M.p.y+.1):.05;}
 setupShell({setView,cast:()=>$('bCast').click(),pause:()=>$('bPause').click(),setQuality:q=>world.setQuality(q)});
 setupDialogFocus();
 finishLoading();requestAnimationFrame(frame);
 window.__river={getState:()=>({mode:P.mode,phase,time:simT,paused,viewMode,depth:P.depth,flow:P.flow,current:currentRiverConditions(),nodes:nodes.map(n=>({type:n.type,p:n.p.toArray(),contact:n.contact})),renderer:world.stats(),assets:world.assetsReady}),setView};
 // Development-only fixtures exercise the real result UI without changing bite odds.
 if(import.meta.env.DEV){
+  window.__river.channelAt=(x,z=0)=>({section:channel.section(x),bed:bed(x,z),column:channel.column(x,z),surface:waterVel(x,-.01,z,simT),discharge:channel.discharge()});
+  window.__river.inspectReach=(x=12,mode='landscape')=>{setView(mode);paused=true;follow=false;camX=x;camY=mode==='underwater'?bed(x,0)+.55:.05;yaw=tYaw;pitch=tPitch;dist=tDist;};
   window.__river.auditBaits=()=>[...visMap].filter(([n])=>n.type==='bait').map(([n,m])=>({kind:n.bt,index:nodes.indexOf(n),anchor:m.position.distanceTo(n.p),angle:m.rotation.z,time:m.userData.uniforms.baitTime.value,parts:m.children.map(x=>x.name),scale:m.scale.x}));
   window.__river.auditGauge=()=>gaugeEls.map(g=>({index:nodes.indexOf(g.it.n),text:g.val.textContent,clearance:g.it.n.p.y-bed(g.it.n.p.x,g.it.n.p.z)-g.it.n.r,displayed:Number(g.val.dataset.clearance),top:g.mk.style.top}));
   window.__river.auditBed=()=>({physics:PROCKS.map(p=>({...p})),...world.inspectBed(),big:BOULDERS.map(b=>({...b,expected:bed(b.x,b.z)+b.r*1.35,visible:world.probeBed(b.x,b.z)[0]}))});
